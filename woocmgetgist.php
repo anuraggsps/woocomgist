@@ -103,6 +103,8 @@ function gist_access_token_settings() {  //is_checkout//echo get_option( 'woocom
                     </div>';
             } else {
               update_option( 'access_token_verification', 'yes', '', 'yes' );
+              add_option('saved_access_token_verification',$_POST['access_token']);
+              
               echo '<div class="alert alert-success fade in alert-dismissible" style="margin-top:18px;">
                         <strong>Success!</strong> Your entered access token is associated with'. $deres->project->project_name.' and '.$deres->project->domain. ' domain.
                     </div>';
@@ -131,7 +133,7 @@ function gist_access_token_settings() {  //is_checkout//echo get_option( 'woocom
 add_action('wp_head', 'set_cookie');
 function set_cookie(){
 	global $wpdb;
-	if(!is_user_logged_in()){
+	//~ if(!is_user_logged_in()){
 		if(!isset($_COOKIE['guest_user']) ){
 			$cookie_name = "guest_user";
 			$cookie_value = md5(microtime());;
@@ -142,7 +144,7 @@ function set_cookie(){
 			setcookie($cookie_name, $cookie_value, time() + (86400 * 365)); 
 			$sql = $wpdb->query("INSERT INTO $users_table (cookie_id,created_at,modified_at)VALUES ('$cookie_value','$datetime','$datetime')");
 		}
-	}
+	//~ }
 }	
 function gist_short_code_func(){
 	global $wpdb;
@@ -189,8 +191,8 @@ function gist_short_code_func(){
 				$prod = wc_get_product(get_the_ID());
 				$viewed =array();
 				$viewed['id'] = get_the_ID();
-				$viewed['name'] = $_product->get_title();
-				$viewed['price'] = $_product->get_price();
+				$viewed['name'] = $prod->get_title();
+				$viewed['price'] = $prod->get_price();
 				$terms = get_the_terms(get_the_ID(), 'product_cat' );
 				$product_cat_id =array();
 				foreach ($terms as $term) {
@@ -280,6 +282,62 @@ function gist_short_code_func(){
 		}
 		
 	}else{
+		// here all functionality for login user  get_current_user_id()   id', 'user_id' or 'email
+		global $wpdb;
+		if(is_user_logged_in() && isset($_COOKIE['guest_user'])){
+			
+			//update login user to custom table
+			$user_id =get_current_user_id();
+			$cookieid = $_COOKIE['guest_user'];
+			$users_tables  =    $wpdb->prefix.'gist_users_data';
+			
+			$check_sql_login = $wpdb->get_results("select * from $users_tables where cookie_id = '$cookieid' and login_id = '' ");
+			if(empty($check_sql_login)){
+				$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookieid'");
+			}
+			
+			$access_token = get_option('saved_access_token_verification' );
+			$user_regp = array();
+			$userdata = get_userdata(get_current_user_id()); 
+			// check if user has gist user id 
+			$gistid = '';
+			if(get_user_meta(get_current_user_id(), 'gist_user_id',true)){
+				$gistid = get_user_meta(get_current_user_id(), 'gist_user_id',true);
+			}
+			$user_regp['id'] = $gistid;
+			$user_regp['email'] = $userdata->user_email;
+			$user_regp['name'] = $userdata->display_name;
+			$user_regp['customer_since'] = get_user_meta(get_current_user_id(),'session_tokens',true);
+			$user_regp['username'] = $userdata->user_login;
+			$user_regp['phone'] = get_user_meta(get_current_user_id(),'phone_number',true);
+			$user_regp['user_id'] = get_current_user_id();
+			$user_regp['web_sessions'] = wp_get_session_token(get_current_user_id());
+			$user_regp['last_seen'] = get_user_meta(get_current_user_id(),'last_update',true);
+			$json_encode = json_encode($user_regp);
+			
+			//send data to gist
+			$ch = curl_init(); 
+			curl_setopt($ch, CURLOPT_URL, 'https://aws-api-testing.getgist.com/users'); 
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $json_encode); 
+			curl_setopt($ch, CURLOPT_POST, 1);
+			$headers = array(); 
+			$headers[] = 'Authorization: Bearer '.$access_token; 
+			$headers[] = 'Content-Type: application/json'; 
+			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
+			$result = curl_exec($ch); 
+			$getdata = (array)json_decode($result);
+			//~ print_r($getdata);die;
+			if (curl_errno($ch)) { 
+				echo 'Error:' . curl_error($ch);
+			} 
+			curl_close ($ch); 
+			
+			// add gist id of user
+			add_user_meta(get_current_user_id(), 'gist_user_id', $getdata['user']->id);
+			
+		}
+		
 		
 	}	
 		
@@ -449,5 +507,3 @@ function woocommerce_cancelled_order(){
 		}		
 	}
 }
-
-

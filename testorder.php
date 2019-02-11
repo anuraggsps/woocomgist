@@ -1,8 +1,9 @@
 <?php
-$args = array( 'post_type' => 'product', 'post_status' => 'publish', 
-				'posts_per_page' => -1 );
-				$products = new WP_Query( $args );
-				echo $products->found_posts; die;
+    
+    
+    
+    $var = json_decode({"user":{"type":"user","id":125594,"name":"admin","email":"anugau.123@gmail.com","user_id":"1","phone":"","session_count":null,"avatar":"https://avatar.tobi.sh/anugau.123@gmail.com?size=120\u0026type=svg\u0026text=AD","landing_url":null,"original_referrer":null,"last_seen_ip":null,"last_seen_user_agent":null,"location_data":{"city_name":null,"region_name":null,"country_name":null,"country_code":null,"continent_name":null,"continent_code":null,"latitude":null,"longitude":null,"postal_code":null,"time_zone":null,"utc_offset":null},"tags":[],"social_profiles":[],"custom_properties":{},"unsubscribed_from_emails":"false","created_at":1549615292,"updated_at":1549615292,"signed_up_at":1549615292,"last_seen_at":1549615292,"last_contacted_at":null,"segments":[]}} );
+    print_r($var);
 	//~ $order =  new WC_Order(238);
 		 //~ echo "<pre>";print_r($order); die;
 		//~ $data['order'] = [];
