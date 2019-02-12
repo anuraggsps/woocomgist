@@ -97,13 +97,18 @@ function gist_access_token_settings() {  //is_checkout//echo get_option( 'woocom
             $getresponse    = curl_exec($ch);
             $deres          = json_decode($getresponse);  
 
-            if ($deres->errors) {
+            if (isset($deres->errors)) {
               echo '<div class="alert alert-danger fade in alert-dismissible">    
                         <strong>Danger! </strong> '. $deres->errors[0]->message .'
                     </div>';
             } else {
               update_option( 'access_token_verification', 'yes', '', 'yes' );
-              add_option('saved_access_token_verification',$_POST['access_token']);
+                if(get_option('saved_access_token_verification')){
+					update_option('saved_access_token_verification',$_POST['access_token']);
+				}else{
+					add_option('saved_access_token_verification',$_POST['access_token']);
+				}
+             
               
               echo '<div class="alert alert-success fade in alert-dismissible" style="margin-top:18px;">
                         <strong>Success!</strong> Your entered access token is associated with'. $deres->project->project_name.' and '.$deres->project->domain. ' domain.
@@ -200,7 +205,7 @@ function gist_short_code_func(){
 				}
 				$type = get_term_by( 'id', get_the_ID(), 'product_cat', 'ARRAY_A' );
 				$viewed['category'] = $type['name'];
-				
+				    
 				$serializev = serialize($viewed);
 				$users_events_tablev 		=    $wpdb->prefix.'gist_users_events_data';
 				$datetimev = date("Y-m-d h:i:s");
@@ -334,7 +339,11 @@ function gist_short_code_func(){
 			curl_close ($ch); 
 			
 			// add gist id of user
-			add_user_meta(get_current_user_id(), 'gist_user_id', $getdata['user']->id);
+			if(get_user_meta(get_current_user_id(), 'gist_user_id', $getdata['user']->id)){
+				update_user_meta(get_current_user_id(), 'gist_user_id', $getdata['user']->id);
+			}else{
+				add_user_meta(get_current_user_id(), 'gist_user_id', $getdata['user']->id);
+			}
 			
 		}
 		
