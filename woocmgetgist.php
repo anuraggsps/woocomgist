@@ -124,7 +124,7 @@ function gist_access_token_settings() {  //is_checkout//echo get_option( 'woocom
       <fieldset>
         <legend>Access Token Settings</legend>
         <label for="field6"><span>Access Token <span class="required">*</span></span>
-          <input type="text" name="access_token" class="textarea-field" required="required">
+          <input type="text" name="access_token" value="<?php echo get_option('saved_access_token_verification' ) ; ?>" class="textarea-field" required="required">
         </label>
         <label><span> </span>
           <input type="submit" value="Submit"/>
@@ -263,6 +263,8 @@ function gist_short_code_func(){
 							 //~ print_r($getdata);die;
 							if (curl_errno($ch)) { 
 								echo 'Error:' . curl_error($ch);
+							}else{
+								echo $result;	
 							} 
 							curl_close ($ch); 
 			
@@ -280,7 +282,10 @@ function gist_short_code_func(){
 										$usermailid = '';
 										if(isset($user->user_email)){
 											$usermailid = $user->user_email;
+										}else{
+											$usermailid = $order_data['billing']['email'];	
 										}
+										
 										// prepare the curl data to gist
 										$eventsdataarray['email'] = $order_data['billing']['email'];
 										$eventsdataarray['event_name'] = $eventdata->event_name;
@@ -312,6 +317,8 @@ function gist_short_code_func(){
 										curl_close($curl);
 										if ($err) {
 										  echo "cURL Error #:" . $err;
+										}else{
+											 echo  $eventtrres;
 										}
 										if(isset($eventtrackresult['event']->id) && $eventtrackresult['event']->id !=''){
 											// update all events id with is data sent to gist server   
@@ -366,8 +373,8 @@ function gist_short_code_func(){
 								$type = get_term_by( 'id', $product_cat_id[0], 'product_cat', 'ARRAY_A' );
 								$data['properties']['order_products'][$i]['category'] = $type['name'];
 								$data['properties']['order_products'][$i]['timestamp'] = $order_data['date_created']->getTimestamp();
-						$i++;
-					};
+								$i++;
+							};
 						$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
 						$datetime = date("Y-m-d h:i:s");
 						$serialize = serialize($data);
@@ -496,45 +503,46 @@ function gist_short_code_func(){
 				track_events_and_send_to_gist ($user_id);
 			}	
 			
-			// track checkout event and update to gist server
-			if(is_checkout()){
-				$cookieid = $_COOKIE['guest_user'];
-				// get all item of cart 
-				$items = $woocommerce->cart->get_cart();
-				// if item is in the cart that mean add to cart event is trrigered.
-				if(count($items)>0){
-					$addtocart_array = array();
-					foreach($items as $item => $values) { 
-						$addtocart_array['external_id'] = $values['data']->get_id();
-						$_product =  wc_get_product( $values['data']->get_id());
-						$addtocart_array['name'] = $_product->get_title();
-						$addtocart_array['price'] = $_product->get_price();
-						$addtocart_array['quantity'] = $values['quantity'];
-						
-						$terms = get_the_terms($values['data']->get_id(), 'product_cat' );
-						$product_cat_id =array();
-						foreach ($terms as $term) {
-							$product_cat_id[] = $term->term_id;
+				// track checkout event and update to gist server
+				if(is_checkout()){
+					$cookieid = $_COOKIE['guest_user'];
+					// get all item of cart 
+					$items = $woocommerce->cart->get_cart();
+					// if item is in the cart that mean add to cart event is trrigered.
+					if(count($items)>0){
+						$addtocart_array = array();
+						foreach($items as $item => $values) { 
+							$addtocart_array['external_id'] = $values['data']->get_id();
+							$_product =  wc_get_product( $values['data']->get_id());
+							$addtocart_array['name'] = $_product->get_title();
+							$addtocart_array['price'] = $_product->get_price();
+							$addtocart_array['quantity'] = $values['quantity'];
+							
+							$terms = get_the_terms($values['data']->get_id(), 'product_cat' );
+							$product_cat_id =array();
+							foreach ($terms as $term) {
+								$product_cat_id[] = $term->term_id;
+							}
+							$type = get_term_by( 'id', $product_cat_id[0], 'product_cat', 'ARRAY_A' );
+							$addtocart_array['category'] = $type['name'];
+							$data[] = $addtocart_array;
+							
+						} 
+						$serialize = serialize($data);
+						$users_events_table 		=    $wpdb->prefix.'gist_users_events_data';
+						$datetime = date("Y-m-d h:i:s");
+						$users_table  =    $wpdb->prefix.'gist_users_data';
+						$sql_get_id =  $wpdb->get_results("select * from $users_table where cookie_id = '$cookieid'");
+						$id = $sql_get_id[0]->id;
+						if($sql_get_id[0]->login_id == ''){
+							$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookieid'");
 						}
-						$type = get_term_by( 'id', $product_cat_id[0], 'product_cat', 'ARRAY_A' );
-						$addtocart_array['category'] = $type['name'];
-						$data[] = $addtocart_array;
-						
-					} 
-					$serialize = serialize($data);
-					$users_events_table 		=    $wpdb->prefix.'gist_users_events_data';
-					$datetime = date("Y-m-d h:i:s");
-					$users_table  =    $wpdb->prefix.'gist_users_data';
-					$sql_get_id =  $wpdb->get_results("select * from $users_table where cookie_id = '$cookieid'");
-					$id = $sql_get_id[0]->id;
-					if($sql_get_id[0]->login_id == ''){
-						$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookieid'");
+						$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_table (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','viewed_checkoutpage','$serialize','$datetime','$datetime')");
+						// send data to gist
+						track_events_and_send_to_gist ($user_id);
 					}
-					$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_table (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','viewed_checkoutpage','$serialize','$datetime','$datetime')");
-				}
-				// send data to gist
-				track_events_and_send_to_gist ($user_id);
-			} 
+					
+				} 
 				function get_placed_order_detail($order_id){
 					global $wpdb;
 					$order =  new WC_Order($order_id);
@@ -658,8 +666,13 @@ function woocommerce_completed_order(){
 					//~ $data['order']["customer_id"] = $ids;
 					
 				//~ }else{
+					$data["email"] = '';
+					if($order_data['customer_id'] != ''){
 						$user = get_user_by( 'ID', $order_data['customer_id']);
 						$data["email"] = $user->user_email; 
+					}else{
+						$data["email"] = $order_data['billing']['email'];
+					}	
 				//~ }
 				$data["event_name"] = 'Fulfilled Order';
 				$data['properties']["currency"] = $order_data['currency'];
@@ -716,7 +729,8 @@ function woocommerce_completed_order(){
 				if(isset($sql_get_id_process_orders[0]->login_id) && $sql_get_id_process_orders[0]->login_id == ''){
 					$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookie_ids'");
 				}
-				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,created_at,modified_at)VALUES ('$idss','Fulfilled Order','$serialize','$datetime','$datetime')");
+				$orderids = $order_data['id'];
+				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Fulfilled Order','$serialize',$orderids,'$datetime','$datetime')");
 				
 				update_post_meta($order_data['id'],'is_custom_completed',1);
 				$user_id = get_current_user_id();  
@@ -765,8 +779,12 @@ function woocommerce_cancelled_order(){
 					//~ $data['order']["customer_id"] = $ids;
 					//~ $data["email"] = '' ;
 				//~ }else{
-					$user = get_user_by( 'ID', $order_data['customer_id']);
-					$data["email"] = $user->user_email;
+					if($order_data['customer_id'] != ''){
+						$user = get_user_by( 'ID', $order_data['customer_id']);
+						$data["email"] = $user->user_email; 
+					}else{
+						$data["email"] = $order_data['billing']['email'];
+					}
 				//~ }
 				$data["event_name"] = 'Cancelled Order';
 				$data['properties']["currency"] = $order_data['currency'];
@@ -818,7 +836,8 @@ function woocommerce_cancelled_order(){
 				if(isset($sql_get_id_process_orders[0]->login_id) && $sql_get_id_process_orders[0]->login_id == ''){
 					$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookie_ids'");
 				}
-				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize','$datetime','$datetime')");
+				$orderids = $order_data['id'];
+				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize',$orderids,'$datetime','$datetime')");
 				update_post_meta($order_data['id'],'is_custom_completed',1); 
 				//
 				$user_id = get_current_user_id();
@@ -938,24 +957,17 @@ function order_event_api($req){
 
 	if ($err) {
 	  echo "cURL Error #:" . $err;
+	}else{
+	  echo $response;
 	}
 	if(isset($res->message)){
-		// update all events id with is data sent to gist server  
-		if(is_user_logged_in()){
-			$user_id = get_current_user_id();
-			$get_joined_data = $wpdb->get_results("Select  	$users_events_tables.created_at,event_id,guest_id,event_name,product,login_id from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) where  $users_tables.login_id = $user_id and is_data_sent_to_gist = 0 ");
-			foreach($get_joined_data as $eventdata){
-				$eventdata_id =  $eventdata->event_id;
-				$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
-			}
-		}else{
-			// do here for guest user
-			$cookie_ids = $_COOKIE['guest_user'];
-			$get_joined_data = $wpdb->get_results("Select  	$users_events_tables.created_at,event_id,guest_id,event_name,product,login_id from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) where  $users_tables.cookie_id = '$cookie_ids' and is_data_sent_to_gist = 0 ");
-			foreach($get_joined_data as $eventdata){
-				$eventdata_id =  $eventdata->event_id;
-				$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
-			}
+		// update all events id with is data sent to gist server 
+		$res =  (array)json_decode($req);
+		$ordercheck_id = $res['order']->order_number;
+		$get_joined_data = $wpdb->get_results("Select  	$users_events_tables.created_at,event_id,guest_id,event_name,product,login_id from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) where  $users_events_tables.order_id = $ordercheck_id and is_data_sent_to_gist = 0 ");
+		foreach($get_joined_data as $eventdata){
+			$eventdata_id =  $eventdata->event_id;
+			$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
 		}
 		
 	}
