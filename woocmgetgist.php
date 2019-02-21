@@ -329,55 +329,62 @@ function gist_short_code_func(){
 								//track events
 								$users_tables  				=    $wpdb->prefix.'gist_users_data';
 								$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
+								$guest_gist_idssss =  $wpdb->prefix.'guest_gist_ids';
 								$eventsdataarray = array();
 								// check if blank row does not have data
-								
-								// prepare the curl data to gist
-								$eventsdataarray['email'] = $order_data['billing']['email'];
-								$eventsdataarray['event_name'] = $eventdata->event_name;
-								$eventsdataarray['properties'] = unserialize($eventdata->product);
-								$eventsdataarray['properties']['recorded_from'] = 'backend';
-								$eventsdataarray['occurred_at'] = strtotime($eventdata->created_at);
-								$sendtrackevents = json_encode($eventsdataarray); 
-								//send data to gist server with curl
-								$tkn =get_option('saved_access_token_verification' );
-								$curl = curl_init();
-								curl_setopt_array($curl, array(
-								CURLOPT_URL => "https://aws-api-testing.getgist.com/events",
-								CURLOPT_RETURNTRANSFER => true,
-								CURLOPT_ENCODING => "",
-								CURLOPT_MAXREDIRS => 10,
-								CURLOPT_TIMEOUT => 30,
-								CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-								CURLOPT_CUSTOMREQUEST => "POST",
-								CURLOPT_POSTFIELDS => $sendtrackevents,
-								CURLOPT_HTTPHEADER => array(
-									"Authorization: Bearer ".$tkn,
-									"Cache-Control: no-cache",
-									"Content-Type: application/json"
-								  ),
-								));
-								$eventtrres = curl_exec($curl);
-								$eventtrackresult = (array)json_decode($eventtrres);
-								$err = curl_error($curl);
-								curl_close($curl);
-								if ($err) {
-								  echo "cURL Error #:" . $err;
-								}else{
-									 echo  $eventtrres;
-									 echo "for new guest users";
-								}
-								if(isset($eventtrackresult['event']->id) && $eventtrackresult['event']->id !=''){
-									// update all events id with is data sent to gist server   
-									$sql_get_events_for_new_user = $wpdb->get_results("select * from $users_events_tables where order_id = $order_id");
-									if(isset($sql_get_events_for_new_user[0]->guest_id)){
-										for($x =0; $x<= $sql_get_events_for_new_user[0]->event_id;$x++){
-											$eventdata_id =  $sql_get_events_for_new_user[0]->event_id;
-											$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
+								$sql_get_guest_id_from_gist_table = $wpdb->get_results("select guestid from $guest_gist_idssss where email_id = '$email_guest'");
+								if($sql_get_guest_id_from_gist_table[0]->guestid){
+									$guestnewuserid = $sql_get_guest_id_from_gist_table[0]->guestid;
+									$getallnewuserevents = $wpdb->get_results("select * from $users_events_tables where guest_id = $guestnewuserid and is_data_sent_to_gist = 0");
+									foreach($getallnewuserevents as $eventdata){
+									// get all events from table by its guestid
+										$emailssa = $order_data['billing']['email'];;
+										// prepare the curl data to gist
+										$eventsdataarray['email'] = $order_data['billing']['email'];
+										$eventsdataarray['event_name'] = $eventdata->event_name;
+										$eventsdataarray['properties'] = unserialize($eventdata->product);
+										$eventsdataarray['properties']['recorded_from'] = 'backend';
+										$eventsdataarray['occurred_at'] = strtotime($eventdata->created_at);
+										$sendtrackevents = json_encode($eventsdataarray); 
+										//send data to gist server with curl
+										$tkn =get_option('saved_access_token_verification' );
+										$curl = curl_init();
+										curl_setopt_array($curl, array(
+										CURLOPT_URL => "https://aws-api-testing.getgist.com/events",
+										CURLOPT_RETURNTRANSFER => true,
+										CURLOPT_ENCODING => "",
+										CURLOPT_MAXREDIRS => 10,
+										CURLOPT_TIMEOUT => 30,
+										CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+										CURLOPT_CUSTOMREQUEST => "POST",
+										CURLOPT_POSTFIELDS => $sendtrackevents,
+										CURLOPT_HTTPHEADER => array(
+											"Authorization: Bearer ".$tkn,
+											"Cache-Control: no-cache",
+											"Content-Type: application/json"
+										  ),
+										));
+										$eventtrres = curl_exec($curl);
+										$eventtrackresult = (array)json_decode($eventtrres);
+										$err = curl_error($curl);
+										curl_close($curl);
+										if ($err) {
+										  echo "cURL Error #:" . $err;
+										}else{
+											 echo  $eventtrres;
+											 echo "for new guest users";
 										}
+										
+										if(isset($eventtrackresult['event']->id) && $eventtrackresult['event']->id !=''){
+											$eventdata_id =  $eventdata->event_id;
+											$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
+										
+										}
+										
 									}
 									
 								}
+								
 							}else{
 								// send event to gist only when user have cookie id same but difff email id.
 								//track events
@@ -388,14 +395,11 @@ function gist_short_code_func(){
 								$get_joined_data = $wpdb->get_results("SELECT  * from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) LEFT JOIN $user_guest_gist_ids ON ($user_guest_gist_ids.guestid = $users_events_tables.guest_id) where  $users_tables.cookie_id = '$cookie_ids' or is_data_sent_to_gist = 0 ");
 								
 								
-								
-								
 								if(!empty($get_joined_data)){
 									$eventsdataarray = array();
 									foreach($get_joined_data as $eventdata){
 										// check if blank row does not have data
 										if($eventdata->gist_id != ''){
-											
 											// prepare the curl data to gist
 											$eventsdataarray['email'] = $eventdata->email_id;
 											$eventsdataarray['event_name'] = $eventdata->event_name;
@@ -540,6 +544,7 @@ function gist_short_code_func(){
 								$i++;
 							};
 						$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
+						$users_tables  =    $wpdb->prefix.'gist_users_data';
 						$datetime = date("Y-m-d h:i:s");
 						$serialize = serialize($data);
 						$sql_get_id_process_orders =  $wpdb->get_results("select * from $users_tables where cookie_id = '$cookie_ids'");
@@ -591,48 +596,45 @@ function gist_short_code_func(){
 			$userdata = get_userdata(get_current_user_id()); 
 			// check if user has gist user id 
 			$gistid = '';
-			if(get_user_meta(get_current_user_id(), 'gist_user_id',true)){
+			if(get_user_meta(get_current_user_id(), 'gist_user_id',true) == ''){
 				$gistid = get_user_meta(get_current_user_id(), 'gist_user_id',true);
-			}
-			// prepare the data to gist for register the user on gist
-			$user_regp['id'] = $gistid;
-			$user_regp['email'] = $userdata->user_email;
-			$user_regp['name'] = $userdata->display_name;
-			$user_regp['customer_since'] = get_user_meta(get_current_user_id(),'session_tokens',true);
-			$user_regp['username'] = $userdata->user_login;
-			$user_regp['phone'] = get_user_meta(get_current_user_id(),'phone_number',true);
-			$user_regp['user_id'] = get_current_user_id();
-			$user_regp['web_sessions'] = wp_get_session_token(get_current_user_id());
-			$user_regp['last_seen'] = get_user_meta(get_current_user_id(),'last_update',true);
-			$json_encode = json_encode($user_regp);
-			
-			//send data to gist
-			$ch = curl_init(); 
-			curl_setopt($ch, CURLOPT_URL, 'https://aws-api-testing.getgist.com/users'); 
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $json_encode); 
-			curl_setopt($ch, CURLOPT_POST, 1);
-			$headers = array(); 
-			$headers[] = 'Authorization: Bearer '.$access_token; 
-			$headers[] = 'Content-Type: application/json'; 
-			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
-			$result = curl_exec($ch); 
-			$getdata = (array)json_decode($result);
-			 //~ print_r($getdata);die;
-			if (curl_errno($ch)) { 
-				echo 'Error:' . curl_error($ch);
-			} 
-			curl_close ($ch); 
-			
-			// add gist id of user
-			if(get_user_meta(get_current_user_id(), 'gist_user_id', $getdata['user']->id)){
-				update_user_meta(get_current_user_id(), 'gist_user_id', $getdata['user']->id);
 			}else{
+				// prepare the data to gist for register the user on gist
+				$user_regp['id'] = $gistid ? $gistid : '';
+				$user_regp['email'] = $userdata->user_email;
+				$user_regp['name'] = $userdata->display_name;
+				$user_regp['customer_since'] = get_user_meta(get_current_user_id(),'session_tokens',true);
+				$user_regp['username'] = $userdata->user_login;
+				$user_regp['phone'] = get_user_meta(get_current_user_id(),'phone_number',true);
+				$user_regp['user_id'] = get_current_user_id();
+				$user_regp['web_sessions'] = wp_get_session_token(get_current_user_id());
+				$user_regp['last_seen'] = get_user_meta(get_current_user_id(),'last_update',true);
+				$json_encode = json_encode($user_regp);
+				
+				//send data to gist
+				$ch = curl_init(); 
+				curl_setopt($ch, CURLOPT_URL, 'https://aws-api-testing.getgist.com/users'); 
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, $json_encode); 
+				curl_setopt($ch, CURLOPT_POST, 1);
+				$headers = array(); 
+				$headers[] = 'Authorization: Bearer '.$access_token; 
+				$headers[] = 'Content-Type: application/json'; 
+				curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
+				$result = curl_exec($ch); 
+				$getdata = (array)json_decode($result);
+				 //~ print_r($getdata);die;
+				if (curl_errno($ch)) { 
+					echo 'Error:' . curl_error($ch);
+				} 
+				curl_close ($ch); 
+				
+				// add gist id of user
 				add_user_meta(get_current_user_id(), 'gist_user_id', $getdata['user']->id);
+				// get all data of user from guest table and send it to gist as per the tracked events
+				track_events_and_send_to_gist ($user_id);
 			}
 			
-			// get all data of user from guest table and send it to gist as per the tracked events
-				track_events_and_send_to_gist ($user_id);
 				
 			// track all events of login user and  only data we have to send that have is_gist_send_data is 0 to gist
 			// if login user active and on product page
@@ -1089,7 +1091,7 @@ add_action( 'admin_head', 'woocommerce_order_status' );
 
 function woocommerce_order_status_for_customer() {
 	// add process order hook along with gist functionality
-	woocommerce_completed_order();
+	woocommerce_cancelled_order();
 	
 }
 add_action( 'wp_head', 'woocommerce_order_status_for_customer' );
