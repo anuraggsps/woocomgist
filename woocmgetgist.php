@@ -202,7 +202,7 @@ function gist_short_code_func(){
 				if(count($items)>0){
 					$addtocart_array = array();
 					foreach($items as $item => $values) { 
-						$addtocart_array['external_id'] = $values['data']->get_id();
+						//~ $addtocart_array['external_id'] = $values['data']->get_id();
 						$_product =  wc_get_product( $values['data']->get_id());
 						$addtocart_array['name'] = $_product->get_title();
 						$addtocart_array['price'] = $_product->get_price();
@@ -540,7 +540,7 @@ function gist_short_code_func(){
 								$item_data = $item_values->get_data();
 								$data['properties']['order_products'][$i]['product_id'] = $product_id;
 								$data['properties']['order_products'][$i]['order_id'] = $order_data['id'];
-								$data['properties']['order_products'][$i]['external_id'] = $product->get_sku();
+								//~ $data['properties']['order_products'][$i]['external_id'] = $product->get_sku();
 								$data['properties']['order_products'][$i]['product_name'] = $item_data['name'];
 								$data['properties']['order_products'][$i]['price'] = $product->get_price();
 								$data['properties']['order_products'][$i]['quantity'] = $item_data['quantity'];
@@ -706,7 +706,7 @@ function gist_short_code_func(){
 					if(count($items)>0){
 						$addtocart_array = array();
 						foreach($items as $item => $values) { 
-							$addtocart_array['external_id'] = $values['data']->get_id();
+							//~ $addtocart_array['external_id'] = $values['data']->get_id();
 							$_product =  wc_get_product( $values['data']->get_id());
 							$addtocart_array['name'] = $_product->get_title();
 							$addtocart_array['price'] = $_product->get_price();
@@ -781,7 +781,7 @@ function gist_short_code_func(){
 									$item_data = $item_values->get_data();
 									$data['properties']['order_products'][$i]['product_id'] = $product_id;
 									$data['properties']['order_products'][$i]['order_id'] = $order_data['id'];
-									$data['properties']['order_products'][$i]['external_id'] =$product_id;
+									//~ $data['properties']['order_products'][$i]['external_id'] =$product_id;
 									$data['properties']['order_products'][$i]['product_name'] = $item_data['name'];
 									$data['properties']['order_products'][$i]['price'] = $product->get_price();
 									$data['properties']['order_products'][$i]['quantity'] = $item_data['quantity'];
@@ -890,7 +890,7 @@ function woocommerce_completed_order(){
 					$item_data = $item_values->get_data();
 					$data['properties']['order_products'][$i]['product_id'] = $product_id;
 					$data['properties']['order_products'][$i]['order_id'] = $order_data['id'];
-					$data['properties']['order_products'][$i]['external_id'] = $product_id;
+					//~ $data['properties']['order_products'][$i]['external_id'] = $product_id;
 					$data['properties']['order_products'][$i]['product_name'] = $item_data['name'];
 					$data['properties']['order_products'][$i]['price'] = $product->get_price();
 					$data['properties']['order_products'][$i]['quantity'] = $item_data['quantity'];
@@ -1002,7 +1002,7 @@ function woocommerce_cancelled_order(){
 					$item_data = $item_values->get_data();
 					$data['properties']['order_products'][$i]['product_id'] = $product_id;
 					$data['properties']['order_products'][$i]['order_id'] = $order_data['id'];
-					$data['properties']['order_products'][$i]['external_id'] = $product_id;
+					//~ $data['properties']['order_products'][$i]['external_id'] = $product_id;
 					$data['properties']['order_products'][$i]['product_name'] = $item_data['name'];
 					$data['properties']['order_products'][$i]['price'] = $product->get_price();
 					$data['properties']['order_products'][$i]['quantity'] = $item_data['quantity'];
@@ -1048,135 +1048,214 @@ function woocommerce_by_customer_cancelled_order(){
 	$args = array('status' => 'wc-customer-cancel',);
 	$orderssss =  wc_get_orders($args);
 	if(count($orderssss) > 0){
-		foreach($orderssss as $datass){
-			$order_data = $datass->get_data();
-			$users_events_tabless 		=    $wpdb->prefix.'gist_users_events_data';
-			$order_ids = $order_data['id'];;
-			$sql_get_id_process_ordess =  $wpdb->get_results("select * from $users_events_tabless where  is_data_sent_to_gist =0 and event_name = 'Cancelled Order'  and order_id = $order_ids");
-			//~ echo $wpdb->last_query;
-			if(empty($sql_get_id_process_ordess) ){
-					//add_post_meta($order_data['id'], 'is_custom_cancelled',0);
-					$cookie_ids ='';
-				if(!is_user_logged_in()){
-					if (isset($_COOKIE['guest_user'])) {
-						$cookie_ids = $_COOKIE['guest_user'];
+		if(is_user_logged_in()){
+			foreach($orderssss as $datass){
+			
+				$order_data = $datass->get_data();
+				$users_events_tabless 		=    $wpdb->prefix.'gist_users_events_data';
+				$order_ids = $order_data['id'];;
+				$sql_get_id_process_ordess =  $wpdb->get_results("select * from $users_events_tabless where  is_data_sent_to_gist =0 and event_name = 'Cancelled Order'  and order_id = $order_ids");
+				//~ echo $wpdb->last_query;
+				if(empty($sql_get_id_process_ordess) ){
+						//add_post_meta($order_data['id'], 'is_custom_cancelled',0);
+						$cookie_ids ='';
+					if(!is_user_logged_in()){
+						if (isset($_COOKIE['guest_user'])) {
+							$cookie_ids = $_COOKIE['guest_user'];
+						}
+					}	
+					$users_tables  =    $wpdb->prefix.'gist_users_data';
+					$data = [];
+					$i=0;
+					$order_id =  $order_data['id'];
+					$order_data = $datass->get_data(); // The Order data
+					$data['order']["order_number"] = $order_data['id'];
+						if($order_data['customer_id'] != ''){
+							$user = get_user_by( 'ID', $order_data['customer_id']);
+							$data["email"] = $user->user_email; 
+						}else{
+							$data["email"] = $order_data['billing']['email'];
+						}
+					$data["event_name"] = 'Cancelled Order';
+					$data['properties']["currency"] = $order_data['currency'];
+					$data['properties']["shipping_method"] = $order_data['payment_method'];
+					$data['properties']["order_date"] = $order_data['date_created']->date('Y-m-d H:i:s');
+					
+					$args = array( 'post_type' => 'product', 'post_status' => 'publish', 
+					'posts_per_page' => -1 );
+					$productsss = new WP_Query( $args );
+					$data['properties']["total_price"] =	$datass->get_total();
+					$data['properties']["store_id"] = "woocommerce";
+					$data['properties']["order_url"] = "";
+					//get shipping method
+					foreach( $datass->get_items( 'shipping' ) as $item_id => $shipping_item_obj ){
+						$data['properties']['order_products']['shipping_meathod']    = $shipping_item_obj->get_method_title();
 					}
-				}	
-				$users_tables  =    $wpdb->prefix.'gist_users_data';
-				$data = [];
-				$i=0;
-				$order_id =  $order_data['id'];
-				$order_data = $datass->get_data(); // The Order data
-				$data['order']["order_number"] = $order_data['id'];
-				//~ if($order_data['customer_id'] == ''){
-					//~ $sql_get_id_process_order =  $wpdb->get_results("select * from $users_tables where cookie_id = '$cookie_ids'");
-					//~ $ids = '';
-					//~ if(isset($sql_get_id_process_order[0]->login_id) && $sql_get_id_process_order[0]->login_id){
-						//~ $ids = $sql_get_id_process_order[0]->login_id;
-					//~ }else{
-						//~ $sql_get_id_process_orders =  $wpdb->get_results("select * from $users_events_tables where  order_id = $order_id");
-						//~ //unsearlise the produc tof that data 
-						//~ $ids = '';
-						//~ if(!empty($sql_get_id_process_orders)){
-							//~ $unserialsise_data = unserialize($sql_get_id_process_orders[0]->product);
-							//~ echo "<pre>";print_r($unserialsise_data);
-							 //~ $ids = $unserialsise_data['order']["customer_id"]; properties
-						//~ }
-					//~ }
-					//~ $data['order']["customer_id"] = $ids;
-					//~ $data["email"] = '' ;
-				//~ }else{
-					if($order_data['customer_id'] != ''){
-						$user = get_user_by( 'ID', $order_data['customer_id']);
-						$data["email"] = $user->user_email; 
-					}else{
-						$data["email"] = $order_data['billing']['email'];
+					foreach ($datass->get_items() as $item_key => $item_values){
+						$product_id = $item_values->get_product_id(); // the Product id
+						$product = $item_values->get_product();
+						// Access Order Items data properties (in an array of values) 
+						$item_data = $item_values->get_data();
+						$data['properties']['order_products'][$i]['product_id'] = $product_id;
+						$data['properties']['order_products'][$i]['order_id'] = $order_data['id'];
+						//~ $data['properties']['order_products'][$i]['external_id'] = $product_id;
+						$data['properties']['order_products'][$i]['product_name'] = $item_data['name'];
+						$data['properties']['order_products'][$i]['price'] = $product->get_price();
+						$data['properties']['order_products'][$i]['quantity'] = $item_data['quantity'];
+						//get product type by its id ;
+						$terms = get_the_terms( $product_id, 'product_cat' );
+						$product_cat_id =array();
+						foreach ($terms as $term) {
+							$product_cat_id[] = $term->term_id;
+						}
+						$type = get_term_by( 'id', $product_cat_id[0], 'product_cat', 'ARRAY_A' );
+						$data['properties']['order_products'][$i]['category'] = $type['name'];
+						$data['properties']['order_products'][$i]['timestamp'] = $order_data['date_created']->getTimestamp();
+						$i++;
+					};
+						//~ echo "<pre>";print_r($data);die;
+					$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
+					$datetime = date("Y-m-d h:i:s");
+					$serialize = serialize($data);
+					$sql_get_id_process_ordes =  $wpdb->get_results("select * from $users_events_tables where 	order_id = $order_id");
+					$idss = '';
+					if(isset($sql_get_id_process_ordes[0]->guest_id)){
+						$idss = $sql_get_id_process_ordes[0]->guest_id;
 					}
-				//~ }
-				$data["event_name"] = 'Cancelled Order';
-				$data['properties']["currency"] = $order_data['currency'];
-				$data['properties']["shipping_method"] = $order_data['payment_method'];
-				$data['properties']["order_date"] = $order_data['date_created']->date('Y-m-d H:i:s');
-				
-				$args = array( 'post_type' => 'product', 'post_status' => 'publish', 
-				'posts_per_page' => -1 );
-				$productsss = new WP_Query( $args );
-				$data['properties']["total_price"] =	$datass->get_total();
-				$data['properties']["store_id"] = "woocommerce";
-				$data['properties']["order_url"] = "";
-				//get shipping method
-				foreach( $datass->get_items( 'shipping' ) as $item_id => $shipping_item_obj ){
-					$data['properties']['order_products']['shipping_meathod']    = $shipping_item_obj->get_method_title();
-				}
-				foreach ($datass->get_items() as $item_key => $item_values){
-					$product_id = $item_values->get_product_id(); // the Product id
-					$product = $item_values->get_product();
-					// Access Order Items data properties (in an array of values) 
-					$item_data = $item_values->get_data();
-					$data['properties']['order_products'][$i]['product_id'] = $product_id;
-					$data['properties']['order_products'][$i]['order_id'] = $order_data['id'];
-					$data['properties']['order_products'][$i]['external_id'] = $product_id;
-					$data['properties']['order_products'][$i]['product_name'] = $item_data['name'];
-					$data['properties']['order_products'][$i]['price'] = $product->get_price();
-					$data['properties']['order_products'][$i]['quantity'] = $item_data['quantity'];
-					//get product type by its id ;
-					$terms = get_the_terms( $product_id, 'product_cat' );
-					$product_cat_id =array();
-					foreach ($terms as $term) {
-						$product_cat_id[] = $term->term_id;
-					}
-					$type = get_term_by( 'id', $product_cat_id[0], 'product_cat', 'ARRAY_A' );
-					$data['properties']['order_products'][$i]['category'] = $type['name'];
-					$data['properties']['order_products'][$i]['timestamp'] = $order_data['date_created']->getTimestamp();
-					$i++;
-				};
-				
-				$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
-				$datetime = date("Y-m-d h:i:s");
-				$serialize = serialize($data);
-				$sql_get_id_process_ordes =  $wpdb->get_results("select * from $users_events_tables where 	order_id = $order_id");
-				$idss = '';
-				if(isset($sql_get_id_process_ordes[0]->guest_id)){
-					$idss = $sql_get_id_process_ordes[0]->guest_id;
-				}
-				$sql_get_id_process_orders =  $wpdb->get_results("select * from $users_tables where cookie_id = '$cookie_ids'");
-				if(isset($sql_get_id_process_orders[0]->login_id) && $sql_get_id_process_orders[0]->login_id == ''){
-					$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookie_ids'");
-				}  
-				if($idss ==''){
-					$guest_gist_ids 		=    $wpdb->prefix.'guest_gist_ids'; 
-					$email = $data["email"];
-					$getguestid = $wpdb->get_results("select * from $guest_gist_ids where email_id = '$email'");
-					//~ echo $wpdb->last_query;
-					if(!empty($getguestid)){
-						$idss	= $getguestid[0]->guestid;
-					}else{
-						$idss = get_current_user_id();
-					}
-					//~ echo $idss ; die("comes in if");
-					$orderids = $order_data['id'];
-					$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize',$orderids,'$datetime','$datetime')");
-					update_post_meta($order_data['id'],'is_custom_completed',1); 
-					//
-					$user_id = get_current_user_id();
-					order_event_api(json_encode($data));
-				}else if($idss !=''){
-					$users_events_tablesasa 		=    $wpdb->prefix.'gist_users_events_data';
-					$sql_get_id_process_ordesss =  $wpdb->get_results("select * from $users_events_tablesasa where  is_data_sent_to_gist =0 and event_name = 'Cancelled Order'  and order_id = $order_ids");
-					 //~ echo $wpdb->last_query; print_r($sql_get_id_process_ordesss); die;
-					if(!empty($sql_get_id_process_ordesss) ){
+					$sql_get_id_process_orders =  $wpdb->get_results("select * from $users_tables where cookie_id = '$cookie_ids'");
+					if(isset($sql_get_id_process_orders[0]->login_id) && $sql_get_id_process_orders[0]->login_id == ''){
+						$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookie_ids'");
+					}  
+					if($idss ==''){
+						
+						$guest_gist_ids 		=    $wpdb->prefix.'guest_gist_ids'; 
+						$email = $data["email"];
+						$getguestid = $wpdb->get_results("select * from $guest_gist_ids where email_id = '$email'");
+						if(!empty($getguestid)){
+							$idss	= $getguestid[0]->guestid;
+						}else{
+							$idss = get_current_user_id();
+						}
 						$orderids = $order_data['id'];
 						$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize',$orderids,'$datetime','$datetime')");
 						update_post_meta($order_data['id'],'is_custom_completed',1); 
 						//
 						$user_id = get_current_user_id();
 						order_event_api(json_encode($data));
+					}else if($idss !=''){
+						
+						$users_events_tablesasa 		=    $wpdb->prefix.'gist_users_events_data';
+						$sql_get_id_process_ordesss =  $wpdb->get_results("select * from $users_events_tablesasa where is_data_sent_to_gist =0 and event_name = 'Cancelled Order' and order_id = $order_id UNION select * from $users_events_tablesasa where is_data_sent_to_gist =1 and guest_id !='' and order_id = $order_id and event_name = 'Cancelled Order'");
+						if(empty($sql_get_id_process_ordesss) ){
+							$orderids = $order_data['id'];
+							$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize',$orderids,'$datetime','$datetime')");
+							update_post_meta($order_data['id'],'is_custom_completed',1); 
+							//
+							$user_id = get_current_user_id();
+							order_event_api(json_encode($data));
+						}	
 					}	
-				}	
+				}
+				
+				
+			}
+		}else{
+			// check here for guest user if cookie id is same that is stored in db then get guest id from there also check if user has login id but if not then check for email id stored in db if that also not found then craete a new user by creating a new cookie id.
+			foreach($orderssss as $datass){
+				$order_data = $datass->get_data();
+				$users_events_tabless 		=    $wpdb->prefix.'gist_users_events_data';
+				$order_ids = $order_data['id'];;
+				$sql_get_id_process_ordess =  $wpdb->get_results("select * from $users_events_tabless where  is_data_sent_to_gist =0 and event_name = 'Cancelled Order'  and order_id = $order_ids");
+				//~ echo $wpdb->last_query;
+				if(empty($sql_get_id_process_ordess) ){
+						//add_post_meta($order_data['id'], 'is_custom_cancelled',0);
+						$cookie_ids ='';
+					if(!is_user_logged_in()){
+						if (isset($_COOKIE['guest_user'])) {
+							$cookie_ids = $_COOKIE['guest_user'];
+						}
+					}	
+					$users_tables  =    $wpdb->prefix.'gist_users_data';
+					$data = [];
+					$i=0;
+					$order_id =  $order_data['id'];
+					$order_data = $datass->get_data(); // The Order data
+					$data['order']["order_number"] = $order_data['id'];
+						if($order_data['customer_id'] != ''){
+							$user = get_user_by( 'ID', $order_data['customer_id']);
+							$data["email"] = $user->user_email; 
+						}else{
+							$data["email"] = $order_data['billing']['email'];
+						}
+					$data["event_name"] = 'Cancelled Order';
+					$data['properties']["currency"] = $order_data['currency'];
+					$data['properties']["shipping_method"] = $order_data['payment_method'];
+					$data['properties']["order_date"] = $order_data['date_created']->date('Y-m-d H:i:s');
+					
+					$args = array( 'post_type' => 'product', 'post_status' => 'publish', 
+					'posts_per_page' => -1 );
+					$productsss = new WP_Query( $args );
+					$data['properties']["total_price"] =	$datass->get_total();
+					$data['properties']["store_id"] = "woocommerce";
+					$data['properties']["order_url"] = "";
+					//get shipping method
+					foreach( $datass->get_items( 'shipping' ) as $item_id => $shipping_item_obj ){
+						$data['properties']['order_products']['shipping_meathod']    = $shipping_item_obj->get_method_title();
+					}
+					foreach ($datass->get_items() as $item_key => $item_values){
+						$product_id = $item_values->get_product_id(); // the Product id
+						$product = $item_values->get_product();
+						// Access Order Items data properties (in an array of values) 
+						$item_data = $item_values->get_data();
+						$data['properties']['order_products'][$i]['product_id'] = $product_id;
+						$data['properties']['order_products'][$i]['order_id'] = $order_data['id'];
+						//~ $data['properties']['order_products'][$i]['external_id'] = $product_id;
+						$data['properties']['order_products'][$i]['product_name'] = $item_data['name'];
+						$data['properties']['order_products'][$i]['price'] = $product->get_price();
+						$data['properties']['order_products'][$i]['quantity'] = $item_data['quantity'];
+						//get product type by its id ;
+						$terms = get_the_terms( $product_id, 'product_cat' );
+						$product_cat_id =array();
+						foreach ($terms as $term) {
+							$product_cat_id[] = $term->term_id;
+						}
+						$type = get_term_by( 'id', $product_cat_id[0], 'product_cat', 'ARRAY_A' );
+						$data['properties']['order_products'][$i]['category'] = $type['name'];
+						$data['properties']['order_products'][$i]['timestamp'] = $order_data['date_created']->getTimestamp();
+						$i++;
+					}
+					$datetime = date("Y-m-d h:i:s");
+					$serialize = serialize($data);
+					$users_events_tablesasa 		=    $wpdb->prefix.'gist_users_events_data';
+					// do a new logic here check if user has same cookie id
+					$cookie = $_COOKIE['guest_user'];
+					$sql_get_orderids =  $wpdb->get_results("select * from $users_events_tablesasa where order_id = $order_id");
+					if(!empty($sql_get_orderids)){
+						$idss = '';
+						//~ echo $sql_get_orderids[0]->guest_id;
+						$idss = $sql_get_orderids[0]->guest_id;
+							$sql_get_id_process_ordesss =  $wpdb->get_results("select * from $users_events_tabless where is_data_sent_to_gist =0 and event_name = 'Cancelled Order' and order_id = $order_id UNION select * from $users_events_tabless where is_data_sent_to_gist =1 and guest_id !='' and order_id = $order_id and event_name = 'Cancelled Order'");
+					    //~ echo $wpdb->last_query; print_r($sql_get_id_process_ordesss);
+						if($sql_get_orderids[0]->guest_id !=''){
+							if(empty($sql_get_id_process_ordesss) ){
+								$orderids = $order_data['id'];
+								$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tabless (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize',$order_id,'$datetime','$datetime')");
+								
+								update_post_meta($order_data['id'],'is_custom_completed',1); 
+								//
+								$user_id = get_current_user_id();
+								order_event_api(json_encode($data));
+									
+							}	
+						}	
+					}
+						
+				}
+				
 			}
 			
-			
-		}		
+		}
+					
 	}
 }
 
@@ -1260,10 +1339,7 @@ function woocommerce_order_status() {
 add_action( 'admin_head', 'woocommerce_order_status' );
 
 function woocommerce_order_status_for_customer() {
-	// add process order hook along with gist functionality
-	if(is_user_logged_in()){
-		woocommerce_by_customer_cancelled_order();
-	}
+	woocommerce_by_customer_cancelled_order();
 }
 add_action( 'wp_head', 'woocommerce_order_status_for_customer' );
 
