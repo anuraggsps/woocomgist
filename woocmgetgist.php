@@ -189,6 +189,8 @@ function set_cookie(){
 		}
 }	
 function gist_short_code_func(){
+	
+	
 	global $wpdb;
 	global $woocommerce;	
 	if(!is_user_logged_in()){
@@ -842,7 +844,8 @@ function gist_short_code_func(){
 		
 		
 }
-add_shortcode( 'gist_short_code', 'gist_short_code_func');
+//add_shortcode( 'gist_short_code', 'gist_short_code_func');
+add_action('wp_head', 'gist_short_code_func');
 // insert data of completed orders of woocommerce
 function woocommerce_completed_order(){
 	global $wpdb;
@@ -1356,6 +1359,7 @@ function track_events_and_send_to_gist ($user_id){
 					foreach($get_joined_data as $eventdata){
 						$eventdata_id =  $eventdata->event_id;
 						$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
+						$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id");
 					}
 				}
 				
@@ -1427,7 +1431,8 @@ function order_event_api($req){
 		$get_joined_data = $wpdb->get_results("Select  	$users_events_tables.created_at,event_id,guest_id,event_name,product,login_id from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) where  $users_events_tables.order_id = $ordercheck_id and is_data_sent_to_gist = 0 ");
 		foreach($get_joined_data as $eventdata){
 			$eventdata_id =  $eventdata->event_id;
-			$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
+			//~ $sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
+			$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id");
 		}
 		
 	}
@@ -1437,12 +1442,13 @@ function order_event_api($req){
 function abandoned_cart(){
 	global $wpdb;
 	$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
-	$users_data 		=    $wpdb->prefix.'gist_users_data';
+	$users_data 		        =    $wpdb->prefix.'gist_users_data';
 	$user_guest_gist_ids 		=    $wpdb->prefix.'guest_gist_ids';
-	$getabandoned  = $wpdb->get_results("select * from $users_events_tables where event_id 
-	IN ( select event_id from $users_events_tables where created_at < DATE_ADD( created_at, INTERVAL 30 MINUTE)) and is_data_sent_to_gist =0 ");
+	//~ $getabandoned  = $wpdb->get_results("select * from $users_events_tables where event_id 
+	//~ IN ( select event_id from $users_events_t ables where created_at < DATE_ADD( created_at, INTERVAL 30 MINUTE)) and is_data_sent_to_gist =0 ");
+	$getabandoned  = $wpdb->get_results("select * from $users_events_tables where event_id IN ( select event_id from $users_events_tables where CURRENT_TIMESTAMP > DATE_ADD( created_at, INTERVAL 60 MINUTE)) and is_data_sent_to_gist =0  ");
 	if(!empty($getabandoned)){
-		$eventsdataarray = array();
+		$eventsdataarray = array();               
 		$sendtrackevents = array();
 		foreach($getabandoned as $eventdata){
 			$usermailid = '';
@@ -1504,10 +1510,11 @@ function abandoned_cart(){
 			if(isset($eventtrackresult['event']->id) && $eventtrackresult['event']->id !=''){
 				// update all events id with is data sent to gist server   
 				foreach($getabandoned as $eventdata){
-					$eventdata_id =  $eventdata->event_id;
-					$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET 
-					 is_data_sent_to_gist = 1 , event_name = 
-					 'abandoned_event' WHERE event_id = $eventdata_id");
+					$eventdata_id =  $eventdata->event_id; 
+					$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id");
+					//~ $sql_update_events = $wpdb->query("UPDATE $users_events_tables SET 
+					 //~ is_data_sent_to_gist = 1 , event_name = 
+					 //~ 'abandoned_event' WHERE event_id = $eventdata_id");
 				}
 			}
 		}
