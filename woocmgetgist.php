@@ -146,14 +146,20 @@ function gist_access_token_settings() {  //is_checkout//echo get_option( 'woocom
   ?> 
     <form action="" method="post">
       <fieldset>
-        <legend>Access Token Settings</legend>
-        <label for="field6"><span>Access Token <span class="required">*</span></span>
-          <input type="text" name="access_token" value="<?php echo get_option('saved_access_token_verification' ) ; ?>" class="textarea-field" required="required">
-           <label for="field6"><span>Tag Name<span class="required">*</span></span>
+				
+				<legend>Access Token Settings</legend>
+				<div class="post-detail">
+				<label for="field6"><span>Access Token <span class="required">*</span></span></label>
+			
+					<input type="text" name="access_token" value="<?php echo get_option('saved_access_token_verification' ) ; ?>" class="textarea-field" required="required">
+				</div>
+				<div class="post-detail">
+           <label for="field6"><span>Tag Name<span class="required">*</span></span></label>
           <input type="text" name="tagname" value="<?php echo get_option('woocomgistusertagname' ) ; ?>" class="textarea-field" required="required">
-        </label>
-        <label><span> </span>
-          <input type="submit" value="Submit"/>
+				</label>
+			</div>
+        <!-- <span> </span> -->
+          <input type="submit" value="Submit" class="sub-btn"/>
         </label>
       </fieldset>
     </form>
@@ -1266,7 +1272,6 @@ function woocommerce_by_customer_cancelled_order(){
 	}
 }
 
-
 function track_events_and_send_to_gist ($user_id){
 	
 	global $wpdb;
@@ -1317,10 +1322,12 @@ function track_events_and_send_to_gist ($user_id){
 				curl_close($curl);
 				if ($err) {
 				  echo "cURL Error #:" . $err;
+				  $decodederror = (array)json_decode($err);
 				}else{
 					echo $eventtrres;	
 					echo "event track api for looged in user";
 				}
+				
 				if(isset($eventtrackresult['event']->id) && $eventtrackresult['event']->id !=''){
 					// update all events id with is data sent to gist server   
 					foreach($get_joined_data as $eventdata){
@@ -1328,15 +1335,183 @@ function track_events_and_send_to_gist ($user_id){
 						//$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
 						$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id");
 					}
+				}else if(isset($eventtrackresult['errors'][0]->message) && $eventtrackresult['errors'][0]->message != ''){
+					$access_token = get_option('saved_access_token_verification' );
+					$user_regp = array();
+					$userdata = get_userdata(get_current_user_id()); 
+					// check if user has gist user id 
+					$gistid = '';
+					if(get_user_meta(get_current_user_id(), 'gist_user_id',true) != ''){
+						$gistid = get_user_meta(get_current_user_id(), 'gist_user_id',true);
+						track_events_and_send_to_gist (get_current_user_id());
+						// prepare the data to gist for register the user on gist
+						$user_regp['id'] = $gistid ? $gistid : '';
+						$user_regp['tags'][] = get_option('woocomgistusertagname');
+						$user_regp['email'] = $userdata->user_email;
+						$user_regp['name'] = $userdata->display_name;
+						$user_regp['customer_since'] = get_user_meta(get_current_user_id(),'session_tokens',true);
+						$user_regp['username'] = $userdata->user_login;
+						$user_regp['phone'] = get_user_meta(get_current_user_id(),'phone_number',true);
+						$user_regp['user_id'] = get_current_user_id();
+						$user_regp['web_sessions'] = wp_get_session_token(get_current_user_id());
+						$user_regp['last_seen'] = get_user_meta(get_current_user_id(),'last_update',true);
+						$json_encode = json_encode($user_regp);
+						
+						//send data to gist
+						$ch = curl_init(); 
+						curl_setopt($ch, CURLOPT_URL, 'https://aws-api-testing.getgist.com/users'); 
+						curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+						curl_setopt($ch, CURLOPT_POSTFIELDS, $json_encode); 
+						curl_setopt($ch, CURLOPT_POST, 1);
+						$headers = array(); 
+						$headers[] = 'Authorization: Bearer '.$access_token; 
+						$headers[] = 'Content-Type: application/json'; 
+						curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
+						$result = curl_exec($ch); 
+						$getdata = (array)json_decode($result);
+						 //~ print_r($getdata);die;
+						if (curl_errno($ch)) { 
+							echo 'Error:' . curl_error($ch);
+						}else{
+							echo  $result; 
+						} 
+						curl_close ($ch);  // 
+						if(isset($getdata['user']->id) && $getdata['user']->id !=''){
+							update_user_meta(get_current_user_id(), 'gist_user_id', $getdata['user']->id);
+							$get_joined_datanew = $wpdb->get_results("Select  	$users_events_tables.created_at,event_id,guest_id,event_name,product,login_id from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) where  $users_tables.login_id = $user_id and is_data_sent_to_gist = 0 ");
+							foreach($get_joined_datanew as $eventdatanew){
+								$user = get_user_by('ID', get_current_user_id());
+								$usermailid = '';
+								if(isset($user->user_email)){
+									$usermailid = $user->user_email;
+								}
+								// prepare the curl data to gist
+								$eventsdataarray['email'] = $usermailid;
+								$eventsdataarray['event_name'] = $eventdatanew->event_name;
+								$eventsdataarray['properties'] = unserialize($eventdatanew->product);
+								$eventsdataarray['properties']['recorded_from'] = 'backend';
+								$eventsdataarray['occurred_at'] = strtotime($eventdatanew->created_at);
+								$sendtrackeventsnew = json_encode($eventsdataarraynew); 
+								//send data to gist server with curl
+								$tkn =get_option('saved_access_token_verification' );
+								$curl = curl_init();
+								curl_setopt_array($curl, array(
+								CURLOPT_URL => "https://aws-api-testing.getgist.com/events",
+								CURLOPT_RETURNTRANSFER => true,
+								CURLOPT_ENCODING => "",
+								CURLOPT_MAXREDIRS => 10,
+								CURLOPT_TIMEOUT => 30,
+								CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+								CURLOPT_CUSTOMREQUEST => "POST",
+								CURLOPT_POSTFIELDS => $sendtrackeventsnew,
+								CURLOPT_HTTPHEADER => array(
+									"Authorization: Bearer ".$tkn,
+									"Cache-Control: no-cache",
+									"Content-Type: application/json"
+								  ),
+								));
+								$eventtrresnew = curl_exec($curl);
+								$eventtrackresultnew = (array)json_decode($eventtrresnew);
+								$err = curl_error($curl);
+								curl_close($curl);
+								if ($err) {
+								  echo "cURL Error #:" . $err;
+								}else{
+									echo $eventtrres;	
+									echo "event track api for looged in user";
+								}
+								if(isset($eventtrackresultnew['event']->id) && $eventtrackresultnew['event']->id !=''){
+									// update all events id with is data sent to gist server   
+									foreach($get_joined_datanew as $eventdatanew){
+										$eventdata_id =  $eventdatanew->event_id;
+										//$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
+										$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id");
+									}
+								}
+								
+							}	
+							
+						}
+						
+					}
+					
+					
 				}
-				
-				
-			}
+			}	
 		}
-		
 	    
 	}			
-}				
+}	
+//~ function track_events_and_send_to_gist ($user_id){
+	
+	//~ global $wpdb;
+	//~ $users_tables  				=    $wpdb->prefix.'gist_users_data';
+	//~ $users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
+	
+	//~ $get_joined_data = $wpdb->get_results("Select  	$users_events_tables.created_at,event_id,guest_id,event_name,product,login_id from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) where  $users_tables.login_id = $user_id and is_data_sent_to_gist = 0 ");
+	
+	//~ if(!empty($get_joined_data)){
+		//~ $eventsdataarray = array();
+		//~ foreach($get_joined_data as $eventdata){
+			//~ // check if blank row does not have data
+			//~ if($eventdata->event_id !=''){
+				
+				//~ $user = get_user_by('ID', get_current_user_id());
+				//~ $usermailid = '';
+				//~ if(isset($user->user_email)){
+					//~ $usermailid = $user->user_email;
+				//~ }
+				//~ // prepare the curl data to gist
+				//~ $eventsdataarray['email'] = $usermailid;
+				//~ $eventsdataarray['event_name'] = $eventdata->event_name;
+				//~ $eventsdataarray['properties'] = unserialize($eventdata->product);
+				//~ $eventsdataarray['properties']['recorded_from'] = 'backend';
+				//~ $eventsdataarray['occurred_at'] = strtotime($eventdata->created_at);
+				//~ $sendtrackevents = json_encode($eventsdataarray); 
+				//~ //send data to gist server with curl
+				//~ $tkn =get_option('saved_access_token_verification' );
+				//~ $curl = curl_init();
+				//~ curl_setopt_array($curl, array(
+				//~ CURLOPT_URL => "https://aws-api-testing.getgist.com/events",
+				//~ CURLOPT_RETURNTRANSFER => true,
+				//~ CURLOPT_ENCODING => "",
+				//~ CURLOPT_MAXREDIRS => 10,
+				//~ CURLOPT_TIMEOUT => 30,
+				//~ CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+				//~ CURLOPT_CUSTOMREQUEST => "POST",
+				//~ CURLOPT_POSTFIELDS => $sendtrackevents,
+				//~ CURLOPT_HTTPHEADER => array(
+					//~ "Authorization: Bearer ".$tkn,
+					//~ "Cache-Control: no-cache",
+					//~ "Content-Type: application/json"
+				  //~ ),
+				//~ ));
+				//~ $eventtrres = curl_exec($curl);
+				//~ $eventtrackresult = (array)json_decode($eventtrres);
+				//~ $err = curl_error($curl);
+				//~ curl_close($curl);
+				//~ if ($err) {
+				  //~ echo "cURL Error #:" . $err;
+				//~ }else{
+					//~ echo $eventtrres;	
+					//~ echo "event track api for looged in user";
+				//~ }
+				//~ if(isset($eventtrackresult['event']->id) && $eventtrackresult['event']->id !=''){
+					//~ // update all events id with is data sent to gist server   
+					//~ foreach($get_joined_data as $eventdata){
+						//~ $eventdata_id =  $eventdata->event_id;
+						//~ //$sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id");
+						//~ $sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id");
+					//~ }
+				//~ }
+				
+				
+			//~ }
+		//~ }
+		
+	    
+	//~ }			
+//~ }				
 // add admin hook for order complete
 function woocommerce_order_status() {
 	// add process order hook along with gist functionality
@@ -1348,12 +1523,35 @@ add_action( 'admin_head', 'woocommerce_order_status' );
 
 function woocommerce_order_status_for_customer() {
 	woocommerce_by_customer_cancelled_order();
-	abandoned_cart();
+	
 }
 add_action( 'wp_head', 'woocommerce_order_status_for_customer' );
 
 
-
+add_action( 'wp_', 'abandonedcart');
+function abandonedcart(){
+	abandoned_cart();
+	global $wpdb;
+	$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
+	$users_data 		        =    $wpdb->prefix.'gist_users_data';
+	$user_guest_gist_ids 		=    $wpdb->prefix.'guest_gist_ids';
+	
+	//check placed order for completed status if status is completed then that order will be deleted other wise it will remain stored in db
+	$sql = $wpdb->get_results("select * from $users_events_tables where event_name = 'Placed Order' and is_data_sent_to_gist =1 ");
+	// if found result then check the status of order 
+	if(!empty($sql)){
+		foreach($sql as $data){
+			$order_id  = $data->order_id ; 
+			if(get_post_meta($order_id, 'is_custom_completed', true) == 1){ 
+				// Delete all record that is sent to gist
+				$event_id = $data->event_id; 
+				$created_at = $data->created_at; 
+				$deleterecords  = $wpdb->query("DELETE FROM $users_events_tables WHERE event_id = $event_id and  is_data_sent_to_gist = 1 and order_id = $order_id");
+			}
+			
+		}
+	}
+}
 
 function order_event_api($req){
 	
@@ -1498,3 +1696,28 @@ function abandoned_cart(){
 		}
 	}
 }
+
+define('DISABLE_WP_CRON', true);
+function my_cron_schedules($schedules){
+    if(!isset($schedules["5min"])){
+        $schedules["5min"] = array(
+            'interval' => 5*60,
+            'display' => __('Once every 5 minutes'));
+    }
+    if(!isset($schedules["30min"])){
+        $schedules["30min"] = array(
+            'interval' => 5*60,
+            'display' => __('Once every 30 minutes'));
+    }
+    return $schedules;
+}
+add_filter('cron_schedules','my_cron_schedules');
+
+if (!wp_next_scheduled('my_task_hook')) {
+	wp_schedule_event( time(), '5min', 'my_task_hook' );
+}
+add_action ( 'my_task_hook', 'my_task_function' );
+
+function my_task_function() {
+	abandoned_cart();
+ }
