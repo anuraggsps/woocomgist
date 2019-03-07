@@ -195,10 +195,10 @@ function set_cookie(){
 		}
 }	
 function gist_short_code_func(){
-	
-	
+
 	global $wpdb;
-	global $woocommerce;	
+
+	
 	if(!is_user_logged_in()){
 		if (isset($_COOKIE['guest_user'])) {
 			
@@ -1614,87 +1614,123 @@ function order_event_api($req){
 	}
 	
 }
+
+
 // send abondend cart to gist as abondedn event
 function abandoned_cart(){
 	global $wpdb;
+	global $woocommerce;	
 	$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
 	$users_data 		        =    $wpdb->prefix.'gist_users_data';
 	$user_guest_gist_ids 		=    $wpdb->prefix.'guest_gist_ids';
-	//~ $getabandoned  = $wpdb->get_results("select * from $users_events_tables where event_id 
-	//~ IN ( select event_id from $users_events_t ables where created_at < DATE_ADD( created_at, INTERVAL 30 MINUTE)) and is_data_sent_to_gist =0 ");
-	$getabandoned  = $wpdb->get_results("select * from $users_events_tables where event_id IN ( select event_id from $users_events_tables where CURRENT_TIMESTAMP > DATE_ADD( created_at, INTERVAL 60 MINUTE)) and is_data_sent_to_gist =0  ");
-	if(!empty($getabandoned)){
-		$eventsdataarray = array();               
-		$sendtrackevents = array();
-		foreach($getabandoned as $eventdata){
-			$usermailid = '';
-			if(is_user_logged_in()){
-				$user = get_user_by('ID',get_current_user_id());
-				$usermailid = $user->user_email;
-			}else{	
-				$guestid = $getabandoned[0]->guest_id;
-				$getguestid = $wpdb->get_results("select * from $users_data 
-				left join $user_guest_gist_ids on ($users_data.id = 
-				$user_guest_gist_ids.guestid ) where $users_data.id = $guestid");
-				if(isset($getguestid[0]->login_id) && $getguestid[0]->login_id 
-				!= ''){
-					$user = get_user_by('ID', $getguestid[0]->login_id);
-					if(isset($user->user_email)){
-						$usermailid = $user->user_email;
-					}else if($getguestid[0]->email_id != ''){
-						$usermailid = $getguestid[0]->email_id;
-					}
-				}else if($getguestid[0]->email_id != ''){
-					$usermailid = $getguestid[0]->email_id;
+	$productarray = array();
+	$data = array();
+	foreach($woocommerce->cart->get_cart() as $detail){
+	  $json = 	(array)json_decode($detail['data']);
+	  $currenttime = date('H:i:s');
+	    if(isset($json['date_modified'])){
+			$dateandtime =  explode(" ",$json['date_modified']->date);
+		    $timewithdecimal = $dateandtime[1]; 
+		    $time = explode(".",$timewithdecimal);
+		    if($currenttime > $time[0]){
+				$_product =  wc_get_product($detail['data']->get_id());
+				$productarray['id'] = $detail['data']->get_id();
+				$productarray['name'] = $_product->get_title();
+				$productarray['price'] = $_product->get_price();
+				$productarray['quantity'] = $detail['quantity'];
+				
+				$terms = get_the_terms($detail['data']->get_id(), 'product_cat' );
+				$product_cat_id =array();
+				foreach ($terms as $term) {
+					$product_cat_id[] = $term->term_id;
 				}
+				$type = get_term_by( 'id', $product_cat_id[0], 'product_cat', 'ARRAY_A' );
+				$addtocart_array['category'] = $type['name'];
+				$data[] = $productarray;
+				
 			}
-			$tkn = get_option('saved_access_token_verification' );
-			$eventsdataarray['email'] = $usermailid;
-			$eventsdataarray['event_name'] = 'abandoned'.$eventdata->event_name;
-			$eventsdataarray['properties'] = unserialize($eventdata->product);
-			$eventsdataarray['properties']['recorded_from'] = 'backend';
-			$eventsdataarray['occurred_at'] = strtotime($eventdata->created_at);
-			$sendtrackevents = json_encode($eventsdataarray); 
-			//send data to gist server with curl
-			$tkn =get_option('saved_access_token_verification' );
-			$curl = curl_init();
-			curl_setopt_array($curl, array(
-			CURLOPT_URL => "https://aws-api-testing.getgist.com/events",
-			CURLOPT_RETURNTRANSFER => true,
-			CURLOPT_ENCODING => "",
-			CURLOPT_MAXREDIRS => 10,
-			CURLOPT_TIMEOUT => 30,
-			CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-			CURLOPT_CUSTOMREQUEST => "POST",
-			CURLOPT_POSTFIELDS => $sendtrackevents,
-			CURLOPT_HTTPHEADER => array(
-				"Authorization: Bearer ".$tkn,
-				"Cache-Control: no-cache",
-				"Content-Type: application/json"
-			  ),
-			));
-			$eventtrres = curl_exec($curl);
-			$eventtrackresult = (array)json_decode($eventtrres);
-			$err = curl_error($curl);
-			curl_close($curl);
-			if ($err) {
-			  echo "cURL Error #:" . $err;
-			}else{
-				 echo  $eventtrres;
-				 echo "yes email exist";
-			}
-			if(isset($eventtrackresult['event']->id) && $eventtrackresult['event']->id !=''){
-				// update all events id with is data sent to gist server   
-				foreach($getabandoned as $eventdata){
-					$eventdata_id =  $eventdata->event_id; 
-					$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id");
-					//~ $sql_update_events = $wpdb->query("UPDATE $users_events_tables SET 
-					 //~ is_data_sent_to_gist = 1 , event_name = 
-					 //~ 'abandoned_event' WHERE event_id = $eventdata_id");
+		}else{
+			$dateandtime =  explode(" ",$json['date_created']->date);
+		    $timewithdecimal = $dateandtime[1]; 
+		    $time = explode(".",$timewithdecimal);
+		    if($currenttime > $time[0]){
+				$_product =  wc_get_product($detail['data']->get_id());
+				$productarray['id'] = $detail['data']->get_id();
+				$productarray['name'] = $_product->get_title();
+				$productarray['price'] = $_product->get_price();
+				$productarray['quantity'] = $detail['quantity'];
+				
+				$terms = get_the_terms($detail['data']->get_id(), 'product_cat' );
+				$product_cat_id =array();
+				foreach ($terms as $term) {
+					$product_cat_id[] = $term->term_id;
 				}
+				$type = get_term_by( 'id', $product_cat_id[0], 'product_cat', 'ARRAY_A' );
+				$addtocart_array['category'] = $type['name'];
+				$data[] = $productarray;
+				
 			}
 		}
+	  
 	}
+	$usermailid = '';
+	if(is_user_logged_in()){
+		$user = get_user_by('ID',get_current_user_id());
+		$usermailid = $user->user_email;
+	}else{	
+		// get cookie id and then check if user has guest id then get email 
+		$guestid = $getabandoned[0]->guest_id;
+		$getguestid = $wpdb->get_results("select * from $users_data 
+		left join $user_guest_gist_ids on ($users_data.id = 
+		$user_guest_gist_ids.guestid ) where $users_data.id = $guestid");
+		if(isset($getguestid[0]->login_id) && $getguestid[0]->login_id 
+		!= ''){
+			$user = get_user_by('ID', $getguestid[0]->login_id);
+			if(isset($user->user_email)){
+				$usermailid = $user->user_email;
+			}else if($getguestid[0]->email_id != ''){
+				$usermailid = $getguestid[0]->email_id;
+			}
+		}else if($getguestid[0]->email_id != ''){
+			$usermailid = $getguestid[0]->email_id;
+		}
+	}
+	$tkn = get_option('saved_access_token_verification' );
+	$eventsdataarray['email'] = $usermailid;
+	$eventsdataarray['event_name'] = 'abandoned'.$eventdata->event_name;
+	$eventsdataarray['properties'] = $data;
+	$eventsdataarray['properties']['recorded_from'] = 'backend';
+	$eventsdataarray['occurred_at'] = strtotime($eventdata->created_at);
+	$sendtrackevents = json_encode($eventsdataarray); 
+	//send data to gist server with curl
+	$tkn =get_option('saved_access_token_verification' );
+	$curl = curl_init();
+	curl_setopt_array($curl, array(
+	CURLOPT_URL => "https://aws-api-testing.getgist.com/events",
+	CURLOPT_RETURNTRANSFER => true,
+	CURLOPT_ENCODING => "",
+	CURLOPT_MAXREDIRS => 10,
+	CURLOPT_TIMEOUT => 30,
+	CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+	CURLOPT_CUSTOMREQUEST => "POST",
+	CURLOPT_POSTFIELDS => $sendtrackevents,
+	CURLOPT_HTTPHEADER => array(
+		"Authorization: Bearer ".$tkn,
+		"Cache-Control: no-cache",
+		"Content-Type: application/json"
+	  ),
+	));
+	$eventtrres = curl_exec($curl);
+	$eventtrackresult = (array)json_decode($eventtrres);
+	$err = curl_error($curl);
+	curl_close($curl);
+	if ($err) {
+	  echo "cURL Error #:" . $err;
+	}else{
+		 echo  $eventtrres;
+		 echo "yes email exist";
+	}
+		
 }
 
 define('DISABLE_WP_CRON', true);
