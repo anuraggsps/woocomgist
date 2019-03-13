@@ -214,7 +214,7 @@ function add_to_cart(){
 	
 	if($woocommerce->cart->get_cart_contents_count() != 0 ){
 		if($woocommerce->cart->get_cart_contents_count() > $_COOKIE['addtocartcount']){
-			unset($_COOKIE['addtocartcount']);
+			setcookie("addtocartcount", "", time() - 3600);
 			$host = parse_url(get_option('siteurl'), PHP_URL_HOST);
 			setcookie('addtocartcount', $woocommerce->cart->get_cart_contents_count(), time() + (86400 * 365),'/',$host); 
 			foreach($woocommerce->cart->get_cart() as $detail){
@@ -237,9 +237,42 @@ function add_to_cart(){
 			$dateme =  $wpdb->get_results('SELECT CURRENT_TIMESTAMP() as tm');
 			$datetime = $dateme[0]->tm;
 			$users_table  =    $wpdb->prefix.'gist_users_data';
-			$sql_get_id =  $wpdb->get_results("select * from $users_data where cookie_id = '$cookie_id'");
-			$id = $sql_get_id[0]->id;
-			$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','addtocart','$serialize','$datetime','$datetime')");
+			$gist_users_events_data  =    $wpdb->prefix.'gist_users_events_data';
+			
+			$sql_get_id =  $wpdb->get_results("SELECT * FROM $users_table left JOIN $gist_users_events_data on ($users_table.id = $gist_users_events_data.guest_id ) where $users_table.cookie_id = '$cookie_id' and $gist_users_events_data.event_name = 'addtocart'");
+			if(isset($sql_get_id[0]->id)){
+				$event_id = '';
+				if($sql_get_id[0]->event_id != ''){
+					$event_id = $sql_get_id[0]->event_id;
+				}
+				$unserialize = unserialize($sql_get_id[0]->product);
+				if($woocommerce->cart->get_cart_contents_count() > count($unserialize) ){
+					$dsecondata = [];
+					foreach($woocommerce->cart->get_cart() as $details){
+						$_product =  wc_get_product($details['data']->get_id());
+						$productsecondarray['id'] = $details['data']->get_id();
+						$productsecondarray['name'] = $_product->get_title();
+						$productsecondarray['price'] = $_product->get_price();
+						$productsecondarray['quantity'] = $details['quantity'];
+						
+						$terms = get_the_terms($details['data']->get_id(), 'product_cat' );
+						$product_cat_id =array();
+						foreach ($terms as $term) {
+							$product_cat_id[] = $term->term_id;
+						}
+						$type = get_term_by( 'id', $product_cat_id[0], 'product_cat', 'ARRAY_A' );
+						$productsecondarray['category'] = $type['name'];
+						$dsecondata[] = $productsecondarray;
+					}
+					//update event product data in custom table
+					$serializeseconddta = serialize($dsecondata);
+					$sql_update = $wpdb->query("update $gist_users_events_data set product = '$serializeseconddta' where event_id = $event_id ");
+				}
+			}else{
+				$sql_get_id =  $wpdb->get_results("select * from $users_data where cookie_id = '$cookie_id'");
+				$id = $sql_get_id[0]->id;
+				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','addtocart','$serialize','$datetime','$datetime')");
+			}
 		}
 	}
 	
@@ -357,7 +390,7 @@ function gist_short_code_func(){
 							$users_tablevsa on $guest_gist_ids.guestid = $users_tablevsa.id 
 							where $guest_gist_ids.email_id = '$enailsaid' 
 							and $users_tablevsa.cookie_id = '$cookie_iddss' and $guest_gist_ids.is_guest=1");
-							
+							//~ echo $wpdb->last_query;die;
 							if(count($sql_check_if_same_email_id_register_to_gist) == 0){
 								//send data to gist
 								$ch = curl_init(); 
@@ -415,7 +448,7 @@ function gist_short_code_func(){
 								$sql_get_guest_id_from_gist_table = $wpdb->get_results("select guestid from $guest_gist_idssss where email_id = '$email_guest'");
 								if($sql_get_guest_id_from_gist_table[0]->guestid){
 									$guestnewuserid = $sql_get_guest_id_from_gist_table[0]->guestid;
-									$getallnewuserevents = $wpdb->get_results("select * from $users_events_tables where guest_id = $guestnewuserid and is_data_sent_to_gist = 0");
+									$getallnewuserevents = $wpdb->get_results("select * from $users_events_tables where guest_id = $guestnewuserid and is_data_sent_to_gist = 0 and event_name != 'addtocart'");
 									foreach($getallnewuserevents as $eventdata){
 									// get all events from table by its guestid
 										$emailssa = $order_data['billing']['email'];;
@@ -473,7 +506,7 @@ function gist_short_code_func(){
 								$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
 								$user_guest_gist_ids 		=    $wpdb->prefix.'guest_gist_ids';
 								
-								$get_joined_data = $wpdb->get_results("SELECT  * from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) LEFT JOIN $user_guest_gist_ids ON ($user_guest_gist_ids.guestid = $users_events_tables.guest_id) where  $users_tables.cookie_id = '$cookie_ids' or is_data_sent_to_gist = 0 ");
+								$get_joined_data = $wpdb->get_results("SELECT  * from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) LEFT JOIN $user_guest_gist_ids ON ($user_guest_gist_ids.guestid = $users_events_tables.guest_id) where event_name != 'addtocart' and  $users_tables.cookie_id = '$cookie_ids' or is_data_sent_to_gist = 0 ");
 								
 								
 								if(!empty($get_joined_data)){
@@ -653,6 +686,8 @@ function gist_short_code_func(){
 							}
 						//
 						order_event_api(json_encode($data));
+						$host = parse_url(get_option('siteurl'), PHP_URL_HOST);
+						setcookie("addtocartcount", "", time() - 3600,'/',$host);
 				}	
 									
 			}
@@ -918,6 +953,8 @@ function gist_short_code_func(){
 							}
 							//
 							order_event_api(json_encode($data));
+						$host = parse_url(get_option('siteurl'), PHP_URL_HOST);
+						setcookie("addtocartcount", "", time() - 3600,'/',$host);
 					}	
 										
 				}
@@ -1533,7 +1570,7 @@ add_action( 'wp_head', 'woocommerce_order_status_for_customer' );
 
 add_action( 'wp', 'abandonedcart');
 function abandonedcart(){
-	//abandoned_cart();
+	abandoned_cart();
 	global $wpdb;
 	$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
 	$users_data 		        =    $wpdb->prefix.'gist_users_data';
@@ -1632,7 +1669,8 @@ function abandoned_cart(){
 	$productarray = array();
 	$data = array();
 	$getabandoned  = $wpdb->get_results("select * from $users_events_tables where event_id IN ( select event_id from $users_events_tables where CURRENT_TIMESTAMP > DATE_ADD( created_at, INTERVAL 60 MINUTE) and event_name = 'addtocart' )  ");
-	if(!empty(getabandoned)){
+	//~ echo  $wpdb->last_query;die;
+	if(!empty($getabandoned)){
 		foreach($getabandoned as $detail){
 		  	$usermailid = '';
 			if(is_user_logged_in()){
@@ -1664,7 +1702,7 @@ function abandoned_cart(){
 			$eventsdataarray['event_name'] = 'abandonedevent';
 			$eventsdataarray['properties'] =unserialize($detail->product);;
 			$eventsdataarray['properties']['recorded_from'] = 'backend';
-			$eventsdataarray['occurred_at'] = strtotime($eventdata->created_at);
+			$eventsdataarray['occurred_at'] = strtotime($detail->created_at);
 			$sendtrackevents = json_encode($eventsdataarray); 
 			//send data to gist server with curl
 			$tkn =get_option('saved_access_token_verification' );
@@ -1701,6 +1739,8 @@ function abandoned_cart(){
 					$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id and event_name = 'addtocart'");
 					//$woocommerce->cart->empty_cart();
 				}
+					$host = parse_url(get_option('siteurl'), PHP_URL_HOST);
+					setcookie("addtocartcount", "", time() - 3600,'/',$host);
 			}
 			
 			
