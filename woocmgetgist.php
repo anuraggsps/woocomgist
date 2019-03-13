@@ -388,8 +388,7 @@ function gist_short_code_func(){
 							$sql_check_if_same_email_id_register_to_gist 
 							=  $wpdb->get_results("select * from $guest_gist_ids left join 
 							$users_tablevsa on $guest_gist_ids.guestid = $users_tablevsa.id 
-							where $guest_gist_ids.email_id = '$enailsaid' 
-							and $users_tablevsa.cookie_id = '$cookie_iddss' and $guest_gist_ids.is_guest=1");
+							where $guest_gist_ids.email_id = '$enailsaid' and $guest_gist_ids.is_guest=1");
 							//~ echo $wpdb->last_query;die;
 							if(count($sql_check_if_same_email_id_register_to_gist) == 0){
 								//send data to gist
@@ -484,8 +483,8 @@ function gist_short_code_func(){
 										if ($err) {
 										  echo "cURL Error #:" . $err;
 										}else{
-											 echo  $eventtrres;
-											 echo "for new guest users";
+											echo  $eventtrres;
+											echo "for new guest users";
 										}
 										
 										if(isset($eventtrackresult['event']->id) && $eventtrackresult['event']->id !=''){
@@ -1669,7 +1668,7 @@ function abandoned_cart(){
 	$productarray = array();
 	$data = array();
 	$getabandoned  = $wpdb->get_results("select * from $users_events_tables where event_id IN ( select event_id from $users_events_tables where CURRENT_TIMESTAMP > DATE_ADD( created_at, INTERVAL 60 MINUTE) and event_name = 'addtocart' )  ");
-	//~ echo  $wpdb->last_query;die;
+	 //~ echo  $wpdb->last_query;die; 
 	if(!empty($getabandoned)){
 		foreach($getabandoned as $detail){
 		  	$usermailid = '';
@@ -1680,14 +1679,18 @@ function abandoned_cart(){
 				// get cookie id and then check if user has guest id then get email 
 				
 				$cookieid = $_COOKIE['guest_user']; 
-				$sql = $wpdb->get_results("select * from $users_data where  cookie_id = $cookieid ORDER BY created_at Desc");
+				$sql = $wpdb->get_results("select * from $users_data where  cookie_id = '$cookieid' ORDER BY created_at Desc");
+				
 				if(!empty($sql)){
+					
 					if($sql[0]->login_id != ''){
 						$user = get_user_by('ID',$sql[0]->login_id);
 						$usermailid = $user->user_email;
 					}else{
+						
 						$guestid = $sql[0]->id;
 						$getguestid = $wpdb->get_results("select * from $users_data left join $user_guest_gist_ids on ($users_data.id = $user_guest_gist_ids.guestid ) where $users_data.id = $guestid");
+						
 						if(!empty($getguestid)){
 							if($getguestid[0]->email_id != ''){
 								$usermailid = $getguestid[0]->email_id;
@@ -1730,6 +1733,7 @@ function abandoned_cart(){
 			  echo "cURL Error #:" . $err;
 			}else{
 				echo $eventtrres;
+				echo "abondened event";
 			}
 			
 			if(isset($eventtrackresult['event']->id) && $eventtrackresult['event']->id !=''){
