@@ -271,7 +271,7 @@ function add_to_cart(){
 			$users_table  =    $wpdb->prefix.'gist_users_data';
 			$gist_users_events_data  =    $wpdb->prefix.'gist_users_events_data';
 			
-			$sql_get_id =  $wpdb->get_results("SELECT * FROM $users_table left JOIN $gist_users_events_data on ($users_table.id = $gist_users_events_data.guest_id ) where $users_table.cookie_id = '$cookie_id' and $gist_users_events_data.event_name = 'added_to_cart'");
+			$sql_get_id =  $wpdb->get_results("SELECT * FROM $users_table left JOIN $gist_users_events_data on ($users_table.id = $gist_users_events_data.guest_id ) where $users_table.cookie_id = '$cookie_id' and $gist_users_events_data.event_name = 'addtocart'");
 			if(isset($sql_get_id[0]->id)){
 				$event_id = '';
 				if($sql_get_id[0]->event_id != ''){
@@ -303,7 +303,7 @@ function add_to_cart(){
 			}else{
 				$sql_get_id =  $wpdb->get_results("select * from $users_data where cookie_id = '$cookie_id'");
 				$id = $sql_get_id[0]->id;
-				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','added_to_cart','$serialize','$datetime','$datetime')");
+				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','addtocart','$serialize','$datetime','$datetime')");
 			}
 		}
 	}
@@ -350,7 +350,7 @@ function gist_short_code_func(){
 					$users_table  =    $wpdb->prefix.'gist_users_data';
 					$sql_get_id =  $wpdb->get_results("select * from $users_table where cookie_id = '$cookie_id'");
 					$id = $sql_get_id[0]->id;
-					$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_table (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','viewed_checkout_page','$serialize','$datetime','$datetime')");
+					$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_table (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','viewed_checkoutpage','$serialize','$datetime','$datetime')");
 				}
 			} 
 			// check if user at product page
@@ -480,7 +480,7 @@ function gist_short_code_func(){
 								$sql_get_guest_id_from_gist_table = $wpdb->get_results("select guestid from $guest_gist_idssss where email_id = '$email_guest'");
 								if($sql_get_guest_id_from_gist_table[0]->guestid){
 									$guestnewuserid = $sql_get_guest_id_from_gist_table[0]->guestid;
-									$getallnewuserevents = $wpdb->get_results("select * from $users_events_tables where guest_id = $guestnewuserid and is_data_sent_to_gist = 0 and event_name != 'added_to_cart'");
+									$getallnewuserevents = $wpdb->get_results("select * from $users_events_tables where guest_id = $guestnewuserid and is_data_sent_to_gist = 0 and event_name != 'addtocart'");
 									foreach($getallnewuserevents as $eventdata){
 									// get all events from table by its guestid
 										$emailssa = $order_data['billing']['email'];;
@@ -538,7 +538,7 @@ function gist_short_code_func(){
 								$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
 								$user_guest_gist_ids 		=    $wpdb->prefix.'guest_gist_ids';
 								
-								$get_joined_data = $wpdb->get_results("SELECT  * from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) LEFT JOIN $user_guest_gist_ids ON ($user_guest_gist_ids.guestid = $users_events_tables.guest_id) where event_name != 'added_to_cart' and  $users_tables.cookie_id = '$cookie_ids' or is_data_sent_to_gist = 0 ");
+								$get_joined_data = $wpdb->get_results("SELECT  * from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) LEFT JOIN $user_guest_gist_ids ON ($user_guest_gist_ids.guestid = $users_events_tables.guest_id) where event_name != 'addtocart' and  $users_tables.cookie_id = '$cookie_ids' or is_data_sent_to_gist = 0 ");
 								
 								
 								if(!empty($get_joined_data)){
@@ -657,7 +657,7 @@ function gist_short_code_func(){
 							}
 							//get email id from order
 							$data["email"] = $order_data['billing']['email'];
-							$data["event_name"] = 'placed_order';
+							$data["event_name"] = 'Placed Order';
 							$data['properties']["currency"] = $order_data['currency'];
 							$data['properties']["shipping_method"] = $order_data['payment_method'];
 							$data['properties']["order_date"] = $order_data['date_created']->date('Y-m-d H:i:s');
@@ -703,7 +703,7 @@ function gist_short_code_func(){
 						$serialize = serialize($data);
 						$sql_get_id_process_orders =  $wpdb->get_results("select * from $users_tables where cookie_id = '$cookie_ids'");
 						$idss = $sql_get_id_process_orders[0]->id;
-						$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','placed_order','$serialize',$order_id,'$datetime','$datetime')");
+						$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Placed Order','$serialize',$order_id,'$datetime','$datetime')");
 						update_post_meta($order_data['id'],'is_custom_completed',0);
 						update_post_meta($order_data['id'], 'is_custom_cancelled',0);
 						//delete the add to cart event form db of same guest id
@@ -711,7 +711,7 @@ function gist_short_code_func(){
 							$datetime = $dateme[0]->tm;
 							$datearray = explode(" ",$datetime);
 						    $datetime = $datearray[0];
-							$sqldele = $wpdb->get_results("Select * from $users_events_tables where DATE(created_at) = '$datetime' and event_name = 'added_to_cart'");
+							$sqldele = $wpdb->get_results("Select * from $users_events_tables where DATE(created_at) = '$datetime' and event_name = 'addtocart'");
 							foreach($sqldele as $del){
 								$eventid = $del->event_id;
 								$delquery = $wpdb->query("Delete from  $users_events_tables where event_id = $eventid");
@@ -912,7 +912,7 @@ function gist_short_code_func(){
 						if($sql_get_id[0]->login_id == ''){
 							$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookieid'");
 						}
-						$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_table (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','viewed_checkout_page','$serialize','$datetime','$datetime')");
+						$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_table (guest_id,event_name,product,created_at,modified_at)VALUES ('$id','viewed_checkoutpage','$serialize','$datetime','$datetime')");
 						// send data to gist
 						track_events_and_send_to_gist ($user_id);
 					}
@@ -939,7 +939,7 @@ function gist_short_code_func(){
 								//get email id from order
 								$data["email"] = $order_data['billing']['email'];
 							}
-								$data["event_name"] = 'placed_order';
+								$data["event_name"] = 'Placed Order';
 								$data["billingemail"] = $order_data['billing']['email'];
 						
 								$data['properties']["currency"] = $order_data['currency'];
@@ -985,7 +985,7 @@ function gist_short_code_func(){
 							$serialize = serialize($data);
 							$sql_get_id_process_orders =  $wpdb->get_results("select * from $users_tables where cookie_id = '$cookie_ids'");
 							$idss = $sql_get_id_process_orders[0]->id;
-							$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','placed_order','$serialize',$order_id,'$datetime','$datetime')");
+							$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Placed Order','$serialize',$order_id,'$datetime','$datetime')");
 							update_post_meta($order_data['id'],'is_custom_completed',0);
 							update_post_meta($order_data['id'], 'is_custom_cancelled',0);
 							//delete the add to cart event form db of same guest id
@@ -993,7 +993,7 @@ function gist_short_code_func(){
 							$datetime = $dateme[0]->tm;
 							$datearray = explode(" ",$datetime);
 						    $datetime = $datearray[0];
-							$sqldele = $wpdb->get_results("Select * from $users_events_tables where DATE(created_at) = '$datetime' and event_name = 'added_to_cart'");
+							$sqldele = $wpdb->get_results("Select * from $users_events_tables where DATE(created_at) = '$datetime' and event_name = 'addtocart'");
 						
 							foreach($sqldele as $del){
 								echo $eventid = $del->event_id;
@@ -1047,7 +1047,7 @@ function woocommerce_completed_order(){
 					}else{
 						$data["email"] = $order_data['billing']['email'];
 					}
-				$data["event_name"] = 'fulfilled_order';
+				$data["event_name"] = 'Fulfilled Order';
 				$data['properties']["currency"] = $order_data['currency'];
 				$data['properties']["shipping_method"] = $order_data['payment_method'];
 				$data['properties']["order_date"] = $order_data['date_created']->date('Y-m-d H:i:s');
@@ -1105,7 +1105,7 @@ function woocommerce_completed_order(){
 					$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookie_ids'");
 				}
 				$orderids = $order_data['id'];
-				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','fulfilled_order','$serialize',$orderids,'$datetime','$datetime')");
+				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Fulfilled Order','$serialize',$orderids,'$datetime','$datetime')");
 				
 				update_post_meta($order_data['id'],'is_custom_completed',1);
 				$user_id = get_current_user_id();  
@@ -1143,7 +1143,7 @@ function woocommerce_cancelled_order(){
 					}else{
 						$data["email"] = $order_data['billing']['email'];
 					}
-				$data["event_name"] = 'cancelled_order';
+				$data["event_name"] = 'Cancelled Order';
 				$data['properties']["currency"] = $order_data['currency'];
 				$data['properties']["shipping_method"] = $order_data['payment_method'];
 				$data['properties']["order_date"] = $order_data['date_created']->date('Y-m-d H:i:s');
@@ -1196,7 +1196,7 @@ function woocommerce_cancelled_order(){
 					$sql_update_user =  $wpdb->query("UPDATE $users_tables SET login_id = $user_id WHERE cookie_id = '$cookie_ids'");
 				}
 				$orderids = $order_data['id'];
-				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','cancelled_order','$serialize',$orderids,'$datetime','$datetime')");
+				$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize',$orderids,'$datetime','$datetime')");
 				update_post_meta($order_data['id'],'is_custom_cancelled',1); 
 				//
 				$user_id = get_current_user_id();
@@ -1242,7 +1242,7 @@ function woocommerce_by_customer_cancelled_order(){
 							}else{
 								$data["email"] = $order_data['billing']['email'];
 							}
-						$data["event_name"] = 'cancelled_order';
+						$data["event_name"] = 'Cancelled Order';
 						$data['properties']["currency"] = $order_data['currency'];
 						$data['properties']["shipping_method"] = $order_data['payment_method'];
 						$data['properties']["order_date"] = $order_data['date_created']->date('Y-m-d H:i:s');
@@ -1305,7 +1305,7 @@ function woocommerce_by_customer_cancelled_order(){
 								$idss = get_current_user_id();
 							}
 							$orderids = $order_data['id'];
-							$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','cancelled_order','$serialize',$orderids,'$datetime','$datetime')");
+							$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize',$orderids,'$datetime','$datetime')");
 							update_post_meta($order_data['id'],'is_custom_completed',1); 
 							//
 							$user_id = get_current_user_id();
@@ -1313,10 +1313,10 @@ function woocommerce_by_customer_cancelled_order(){
 						}else if($idss !=''){
 							
 							$users_events_tablesasa 		=    $wpdb->prefix.'gist_users_events_data';
-							$sql_get_id_process_ordesss =  $wpdb->get_results("select * from $users_events_tablesasa where is_data_sent_to_gist =0 and event_name = 'cancelled_order' and order_id = $order_id UNION select * from $users_events_tablesasa where is_data_sent_to_gist =1 and guest_id !='' and order_id = $order_id and event_name = 'cancelled_order'");
+							$sql_get_id_process_ordesss =  $wpdb->get_results("select * from $users_events_tablesasa where is_data_sent_to_gist =0 and event_name = 'Cancelled Order' and order_id = $order_id UNION select * from $users_events_tablesasa where is_data_sent_to_gist =1 and guest_id !='' and order_id = $order_id and event_name = 'Cancelled Order'");
 							if(empty($sql_get_id_process_ordesss) ){
 								$orderids = $order_data['id'];
-								$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','cancelled_order','$serialize',$orderids,'$datetime','$datetime')");
+								$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tables (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize',$orderids,'$datetime','$datetime')");
 								update_post_meta($order_data['id'],'is_custom_cancelled',1); 
 								//
 								$user_id = get_current_user_id();
@@ -1357,7 +1357,7 @@ function woocommerce_by_customer_cancelled_order(){
 							}else{
 								$data["email"] = $order_data['billing']['email'];
 							}
-						$data["event_name"] = 'cancelled_order';
+						$data["event_name"] = 'Cancelled Order';
 						$data['properties']["currency"] = $order_data['currency'];
 						$data['properties']["shipping_method"] = $order_data['payment_method'];
 						$data['properties']["order_date"] = $order_data['date_created']->date('Y-m-d H:i:s');
@@ -1406,12 +1406,12 @@ function woocommerce_by_customer_cancelled_order(){
 							$idss = '';
 							//~ echo $sql_get_orderids[0]->guest_id;
 							$idss = $sql_get_orderids[0]->guest_id;
-								$sql_get_id_process_ordesss =  $wpdb->get_results("select * from $users_events_tabless where is_data_sent_to_gist =0 and event_name = 'cancelled_order' and order_id = $order_id UNION select * from $users_events_tabless where is_data_sent_to_gist =1 and guest_id !='' and order_id = $order_id and event_name = 'cancelled_order'");
+								$sql_get_id_process_ordesss =  $wpdb->get_results("select * from $users_events_tabless where is_data_sent_to_gist =0 and event_name = 'Cancelled Order' and order_id = $order_id UNION select * from $users_events_tabless where is_data_sent_to_gist =1 and guest_id !='' and order_id = $order_id and event_name = 'Cancelled Order'");
 							//~ echo $wpdb->last_query; print_r($sql_get_id_process_ordesss);
 							if($sql_get_orderids[0]->guest_id !=''){
 								if(empty($sql_get_id_process_ordesss) ){
 									$orderids = $order_data['id'];
-									$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tabless (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','cancelled_order','$serialize',$order_id,'$datetime','$datetime')");
+									$sql_add_to_cart = $wpdb->query("INSERT INTO $users_events_tabless (guest_id,event_name,product,order_id,created_at,modified_at)VALUES ('$idss','Cancelled Order','$serialize',$order_id,'$datetime','$datetime')");
 									
 									update_post_meta($order_data['id'],'is_custom_cancelled',1); 
 									//
@@ -1437,7 +1437,7 @@ function track_events_and_send_to_gist ($user_id){
 	$users_tables  				=    $wpdb->prefix.'gist_users_data';
 	$users_events_tables 		=    $wpdb->prefix.'gist_users_events_data';
 	
-	$get_joined_data = $wpdb->get_results("Select  	$users_events_tables.created_at,event_id,guest_id,event_name,product,login_id from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) where  $users_tables.login_id = $user_id and is_data_sent_to_gist = 0 and $users_events_tables.event_name != 'added_to_cart'");
+	$get_joined_data = $wpdb->get_results("Select  	$users_events_tables.created_at,event_id,guest_id,event_name,product,login_id from $users_tables left join $users_events_tables on ($users_tables.id = $users_events_tables.guest_id) where  $users_tables.login_id = $user_id and is_data_sent_to_gist = 0 and $users_events_tables.event_name != 'addtocart'");
 	
 	if(!empty($get_joined_data)){
 		$eventsdataarray = array();
@@ -1626,7 +1626,7 @@ function abandonedcart(){
 	$user_guest_gist_ids 		=    $wpdb->prefix.'guest_gist_ids';
 	
 	//check placed order for completed status if status is completed then that order will be deleted other wise it will remain stored in db
-	$sql = $wpdb->get_results("select * from $users_events_tables where event_name = 'placed_order' and is_data_sent_to_gist =1 ");
+	$sql = $wpdb->get_results("select * from $users_events_tables where event_name = 'Placed Order' and is_data_sent_to_gist =1 ");
 	// if found result then check the status of order 
 	if(!empty($sql)){
 		foreach($sql as $data){
@@ -1751,9 +1751,9 @@ function order_event_api($req){
 						foreach($get_joined_data as $eventdata){
 							$eventdata_id =  $eventdata->event_id;
 							 $sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  
-							 is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id and event_name = 'placed_order'");
+							 is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id and event_name = 'Placed Order'");
 							$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  
-							WHERE event_id = $eventdata_id and event_name != 'placed_order'");
+							WHERE event_id = $eventdata_id and event_name != 'Placed Order'");
 							// check if this order is cancelled by customer
 							$wppost =  $wpdb->prefix.'posts';
 							$checksql = $wpdb->get_results("Select * from $wppost where ID = 
@@ -1761,7 +1761,7 @@ function order_event_api($req){
 							if(isset($checksql[0]->ID) && $checksql[0]->post_status == 'wc-customer-cancel' ){
 								$eventsaid = $checksql[0]->ID;
 								$sql_update_eventss = $wpdb->query("DELETE FROM $users_events_tables  
-							WHERE event_id = $eventsaid and event_name != 'placed_order'");
+							WHERE event_id = $eventsaid and event_name != 'Placed Order'");
 							}
 						}
 						
@@ -1813,9 +1813,9 @@ function order_event_api($req){
 				foreach($get_joined_data as $eventdata){
 					$eventdata_id =  $eventdata->event_id;
 					 $sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  
-					 is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id and event_name = 'placed_order'");
+					 is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id and event_name = 'Placed Order'");
 					$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  
-					WHERE event_id = $eventdata_id and event_name != 'placed_order'");
+					WHERE event_id = $eventdata_id and event_name != 'Placed Order'");
 					// check if this order is cancelled by customer
 					$wppost =  $wpdb->prefix.'posts';
 					$checksql = $wpdb->get_results("Select * from $wppost where ID = 
@@ -1823,7 +1823,7 @@ function order_event_api($req){
 					if(isset($checksql[0]->ID) && $checksql[0]->post_status == 'wc-customer-cancel' ){
 						$eventsaid = $checksql[0]->ID;
 						$sql_update_eventss = $wpdb->query("DELETE FROM $users_events_tables  
-					WHERE event_id = $eventsaid and event_name != 'placed_order'");
+					WHERE event_id = $eventsaid and event_name != 'Placed Order'");
 					}
 				}
 				
@@ -1873,7 +1873,7 @@ function order_event_api($req){
 			foreach($get_joined_data as $eventdata){
 				$eventdata_id =  $eventdata->event_id;
 				 $sql_update_events = $wpdb->query("UPDATE $users_events_tables SET  
-				 is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id and event_name = 'placed_order'");
+				 is_data_sent_to_gist = 1 WHERE event_id = $eventdata_id and event_name = 'Placed Order'");
 				$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  
 				WHERE event_id = $eventdata_id and event_name != 'Placed Order'");
 				// check if this order is cancelled by customer
@@ -1883,7 +1883,7 @@ function order_event_api($req){
 				if(isset($checksql[0]->ID) && $checksql[0]->post_status == 'wc-customer-cancel' ){
 					$eventsaid = $checksql[0]->ID;
 					$sql_update_eventss = $wpdb->query("DELETE FROM $users_events_tables  
-				WHERE event_id = $eventsaid and event_name != 'placed_order'");
+				WHERE event_id = $eventsaid and event_name != 'Placed Order'");
 				}
 			}
 			
@@ -1907,7 +1907,7 @@ function abandoned_cart(){
 	$user_guest_gist_ids 		=    $wpdb->prefix.'guest_gist_ids';
 	$productarray = array();
 	$data = array();
-	$getabandoned  = $wpdb->get_results("select * from $users_events_tables where event_id IN ( select event_id from $users_events_tables where CURRENT_TIMESTAMP > DATE_ADD( created_at, INTERVAL 60 MINUTE) and event_name = 'added_to_cart' )  ");
+	$getabandoned  = $wpdb->get_results("select * from $users_events_tables where event_id IN ( select event_id from $users_events_tables where CURRENT_TIMESTAMP > DATE_ADD( created_at, INTERVAL 60 MINUTE) and event_name = 'addtocart' )  ");
 	 //~ echo  $wpdb->last_query;die; 
 	if(!empty($getabandoned)){
 		foreach($getabandoned as $detail){
@@ -1980,7 +1980,7 @@ function abandoned_cart(){
 				// update all events id with is data sent to gist server   
 				foreach($getabandoned as $eventdata){
 					$eventdata_id =  $eventdata->event_id; 
-					$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id and event_name = 'added_to_cart'");
+					$sql_update_events = $wpdb->query("DELETE FROM $users_events_tables  WHERE event_id = $eventdata_id and event_name = 'addtocart'");
 					//$woocommerce->cart->empty_cart();
 				}
 					$host = parse_url(get_option('siteurl'), PHP_URL_HOST);
